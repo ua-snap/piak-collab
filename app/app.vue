@@ -115,7 +115,7 @@ onMounted(async () => {
 
     const mapOptions = {
       crs: L.CRS.EPSG4326,
-      center: [20.0, -157.0],
+      center: [20.25, -157.25],
       zoom: 6
     }
 
