@@ -24,23 +24,29 @@ onMounted(async () => {
       const L = (await import('leaflet')).default
       console.log('Leaflet loaded:', L)
 
-      // Initialize the map centered on Alaska
-      map = L.map(mapContainer.value).setView([64.8, -147.0], 4)
-      console.log('Map initialized:', map)
+      // Initialize the map centered on Alaska with EPSG:4326 CRS
+      map = L.map(mapContainer.value, {
+        crs: L.CRS.EPSG4326,
+        center: [64.8, -147.0],
+        zoom: 4
+      })
+      console.log('Map initialized with EPSG:4326:', map)
 
-      // Add a base tile layer (OpenStreetMap)
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap contributors'
+      // Add a base tile layer compatible with EPSG:4326
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '© OpenStreetMap contributors',
+        noWrap: true
       }).addTo(map)
       console.log('Base layer added')
 
-      // Add the WMS layer from SNAP's Rasdaman server
+      // Add the WMS layer from SNAP's Rasdaman server with EPSG:4326
       L.tileLayer.wms('https://zeus.snap.uaf.edu/rasdaman/ows', {
         layers: 'piak_collab_means',
         format: 'image/png',
         transparent: true,
         version: '1.3.0',
+        crs: L.CRS.EPSG4326,
         attribution: 'SNAP - University of Alaska Fairbanks'
       }).addTo(map)
       console.log('WMS layer added')
