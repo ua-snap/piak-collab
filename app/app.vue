@@ -34,8 +34,8 @@ onMounted(async () => {
 
     const mapOptions = {
       crs: L.CRS.EPSG4326,
-      center: [64.8, -147.0],
-      zoom: 4
+      center: [20.0, -157.0],
+      zoom: 6
     }
 
     // Initialize first map (Means)
