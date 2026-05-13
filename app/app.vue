@@ -84,7 +84,6 @@ const updateLayers = () => {
     transparent: true,
     version: '1.3.0',
     crs: L.CRS.EPSG4326,
-    attribution: 'SNAP - University of Alaska Fairbanks'
   }).addTo(map1)
 
   // Add new WMS layer for deltas
@@ -94,7 +93,6 @@ const updateLayers = () => {
     transparent: true,
     version: '1.3.0',
     crs: L.CRS.EPSG4326,
-    attribution: 'SNAP - University of Alaska Fairbanks'
   }).addTo(map2)
 
   console.log('Updated layers with dimensions:', dimParams)
