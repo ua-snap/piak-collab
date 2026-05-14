@@ -79,20 +79,22 @@ const updateLayers = () => {
 
   // Add new WMS layer for means
   wmsLayer1 = L.tileLayer.wms('https://zeus.snap.uaf.edu/rasdaman/ows?' + dimParams, {
-    layers: 'piak_collab_means',
+    layers: 'piak_collab',
     format: 'image/png',
     transparent: true,
     version: '1.3.0',
     crs: L.CRS.EPSG4326,
+    styles: 'mean'
   }).addTo(map1)
 
   // Add new WMS layer for deltas
   wmsLayer2 = L.tileLayer.wms('https://zeus.snap.uaf.edu/rasdaman/ows?' + dimParams, {
-    layers: 'piak_collab_deltas',
+    layers: 'piak_collab',
     format: 'image/png',
     transparent: true,
     version: '1.3.0',
     crs: L.CRS.EPSG4326,
+    styles: 'delta'
   }).addTo(map2)
 
   console.log('Updated layers with dimensions:', dimParams)
