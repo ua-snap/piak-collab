@@ -114,7 +114,7 @@ const updateLayers = () => {
     transparent: true,
     version: '1.3.0',
     crs: L.CRS.EPSG4326,
-    styles: 'mean_for_large_delta'
+    styles: 'mean_for_large_deltas'
   }).addTo(map3)
 
   console.log('Updated layers with dimensions:', dimParams)
