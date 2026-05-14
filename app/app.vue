@@ -1,7 +1,7 @@
 <template>
   <div id="app-container">
     <div id="controls-panel">
-      <h2>Layer Controls</h2>
+      <h2>PI-AK Collaboration Rasdaman Demo</h2>
       <div class="control-group">
         <label for="model">Model:</label>
         <select id="model" v-model="selectedModel" @change="updateLayers">
@@ -35,15 +35,15 @@
     </div>
     <div id="maps-wrapper">
       <div class="map-panel">
-        <h3>Means</h3>
+        <h3>Mean Precipitation</h3>
         <div class="map" ref="mapContainer1"></div>
       </div>
       <div class="map-panel">
-        <h3>Deltas</h3>
+        <h3>Delta From Observed</h3>
         <div class="map" ref="mapContainer2"></div>
       </div>
       <div class="map-panel">
-        <h3>Experiment</h3>
+        <h3>Mean for Large Deltas Only</h3>
         <div class="map" ref="mapContainer3"></div>
       </div>
     </div>
@@ -266,8 +266,6 @@ onMounted(async () => {
 .map-panel h3 {
   margin: 0 0 10px 0;
   padding: 10px;
-  background-color: #333;
-  color: white;
   text-align: center;
   font-family: Arial, sans-serif;
   border-radius: 4px;
