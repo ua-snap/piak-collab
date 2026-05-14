@@ -84,40 +84,54 @@ const updateLayers = () => {
     map3.removeLayer(wmsLayer3)
   }
 
-  // Build dimension parameters
-  const dimParams = `dim_model=${selectedModel.value}&dim_scenario=${selectedScenario.value}&dim_position=${selectedPosition.value}&dim_season=${selectedSeason.value}`
-
   // Add new WMS layer for means
-  wmsLayer1 = L.tileLayer.wms('https://zeus.snap.uaf.edu/rasdaman/ows?' + dimParams, {
+  wmsLayer1 = L.tileLayer.wms('https://zeus.snap.uaf.edu/rasdaman/ows', {
     layers: 'piak_collab',
     format: 'image/png',
     transparent: true,
     version: '1.3.0',
     crs: L.CRS.EPSG4326,
-    styles: 'mean'
+    styles: 'mean',
+    dim_model: selectedModel.value,
+    dim_scenario: selectedScenario.value,
+    dim_position: selectedPosition.value,
+    dim_season: selectedSeason.value
   }).addTo(map1)
 
   // Add new WMS layer for deltas
-  wmsLayer2 = L.tileLayer.wms('https://zeus.snap.uaf.edu/rasdaman/ows?' + dimParams, {
+  wmsLayer2 = L.tileLayer.wms('https://zeus.snap.uaf.edu/rasdaman/ows', {
     layers: 'piak_collab',
     format: 'image/png',
     transparent: true,
     version: '1.3.0',
     crs: L.CRS.EPSG4326,
-    styles: 'delta'
+    styles: 'delta',
+    dim_model: selectedModel.value,
+    dim_scenario: selectedScenario.value,
+    dim_position: selectedPosition.value,
+    dim_season: selectedSeason.value
   }).addTo(map2)
 
   // Add new WMS layer for experiment
-  wmsLayer3 = L.tileLayer.wms('https://zeus.snap.uaf.edu/rasdaman/ows?' + dimParams, {
+  wmsLayer3 = L.tileLayer.wms('https://zeus.snap.uaf.edu/rasdaman/ows', {
     layers: 'piak_collab',
     format: 'image/png',
     transparent: true,
     version: '1.3.0',
     crs: L.CRS.EPSG4326,
-    styles: 'mean_for_large_deltas'
+    styles: 'mean_for_large_deltas',
+    dim_model: selectedModel.value,
+    dim_scenario: selectedScenario.value,
+    dim_position: selectedPosition.value,
+    dim_season: selectedSeason.value
   }).addTo(map3)
 
-  console.log('Updated layers with dimensions:', dimParams)
+  console.log('Updated layers with dimensions:', {
+    dim_model: selectedModel.value,
+    dim_scenario: selectedScenario.value,
+    dim_position: selectedPosition.value,
+    dim_season: selectedSeason.value
+  })
 }
 
 onMounted(async () => {
