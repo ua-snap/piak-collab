@@ -18,10 +18,10 @@
         </select>
       </div>
       <div class="control-group">
-        <label for="position">Position:</label>
+        <label for="position">Year:</label>
         <select id="position" v-model="selectedPosition" @change="updateLayers">
-          <option value="0">MID</option>
-          <option value="1">END</option>
+          <option value="0">2069</option>
+          <option value="1">2099</option>
         </select>
       </div>
       <div class="control-group">
