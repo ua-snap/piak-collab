@@ -42,6 +42,10 @@
         <h3>Deltas</h3>
         <div class="map" ref="mapContainer2"></div>
       </div>
+      <div class="map-panel">
+        <h3>Experiment</h3>
+        <div class="map" ref="mapContainer3"></div>
+      </div>
     </div>
   </div>
 </template>
@@ -51,10 +55,13 @@ import { ref, onMounted, nextTick } from 'vue'
 
 const mapContainer1 = ref<HTMLElement | null>(null)
 const mapContainer2 = ref<HTMLElement | null>(null)
+const mapContainer3 = ref<HTMLElement | null>(null)
 let map1: any = null
 let map2: any = null
+let map3: any = null
 let wmsLayer1: any = null
 let wmsLayer2: any = null
+let wmsLayer3: any = null
 let L: any = null
 
 // Dimension selections
@@ -64,7 +71,7 @@ const selectedPosition = ref('0')
 const selectedSeason = ref('0')
 
 const updateLayers = () => {
-  if (!L || !map1 || !map2) return
+  if (!L || !map1 || !map2 || !map3) return
 
   // Remove existing WMS layers
   if (wmsLayer1) {
@@ -72,6 +79,9 @@ const updateLayers = () => {
   }
   if (wmsLayer2) {
     map2.removeLayer(wmsLayer2)
+  }
+  if (wmsLayer3) {
+    map3.removeLayer(wmsLayer3)
   }
 
   // Build dimension parameters
@@ -97,6 +107,16 @@ const updateLayers = () => {
     styles: 'delta'
   }).addTo(map2)
 
+  // Add new WMS layer for experiment
+  wmsLayer3 = L.tileLayer.wms('https://zeus.snap.uaf.edu/rasdaman/ows?' + dimParams, {
+    layers: 'piak_collab',
+    format: 'image/png',
+    transparent: true,
+    version: '1.3.0',
+    crs: L.CRS.EPSG4326,
+    styles: 'experiment'
+  }).addTo(map3)
+
   console.log('Updated layers with dimensions:', dimParams)
 }
 
@@ -106,7 +126,7 @@ onMounted(async () => {
   
   await nextTick()
   
-  console.log('Components mounted:', mapContainer1.value, mapContainer2.value)
+  console.log('Components mounted:', mapContainer1.value, mapContainer2.value, mapContainer3.value)
   
   try {
     // Dynamically import Leaflet only on client side
@@ -115,8 +135,10 @@ onMounted(async () => {
 
     const mapOptions = {
       crs: L.CRS.EPSG4326,
-      center: [20.25, -157.25],
-      zoom: 6
+      center: [20.25, -156.55],
+      zoom: 6,
+      zoomSnap: 0.1,
+      zoomControl: false
     }
 
     // Initialize first map (Means)
@@ -145,10 +167,24 @@ onMounted(async () => {
       }).addTo(map2)
     }
 
+    // Initialize third map (Experiment)
+    if (mapContainer3.value) {
+      map3 = L.map(mapContainer3.value, mapOptions)
+      console.log('Map 3 initialized with EPSG:4326:', map3)
+
+      // Add base tile layer
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '© OpenStreetMap contributors',
+        noWrap: true
+      }).addTo(map3)
+    }
+
     // Fix for map tiles not loading properly
     setTimeout(() => {
       if (map1) map1.invalidateSize()
       if (map2) map2.invalidateSize()
+      if (map3) map3.invalidateSize()
       console.log('Maps invalidated and resized')
       
       // Load initial layers
@@ -224,7 +260,7 @@ onMounted(async () => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  max-width: 50%;
+  max-width: 33.333%;
 }
 
 .map-panel h3 {
