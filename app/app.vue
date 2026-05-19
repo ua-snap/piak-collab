@@ -35,16 +35,85 @@
     </div>
     <div id="maps-wrapper">
       <div class="map-panel">
-        <h3>Mean Precipitation</h3>
-        <div class="map" ref="mapContainer1"></div>
+        <h3>Mean Precipitation (mm/day)</h3>
+        <div class="map" ref="mapContainer1">
+          <div class="legend">
+            <div class="legend-item">
+              <div class="legend-swatch" style="background-color: rgba(237, 248, 233, 1);"></div>
+              <span class="legend-value">&ge; 0, &lt; 2</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-swatch" style="background-color: rgba(186, 228, 179, 1);"></div>
+              <span class="legend-value">&ge; 2, &lt; 4</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-swatch" style="background-color: rgba(116, 196, 118, 1);"></div>
+              <span class="legend-value">&ge; 4, &lt; 6</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-swatch" style="background-color: rgba(49, 163, 84, 1);"></div>
+              <span class="legend-value">&ge; 6, &lt; 8</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-swatch" style="background-color: rgba(0, 109, 44, 1);"></div>
+              <span class="legend-value">&ge; 8</span>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="map-panel">
-        <h3>Delta From Observed</h3>
-        <div class="map" ref="mapContainer2"></div>
+        <h3>Delta From Observed (&Delta; mm/day)</h3>
+        <div class="map" ref="mapContainer2">
+          <div class="legend">
+            <div class="legend-item">
+              <div class="legend-swatch" style="background-color: rgba(254, 229, 217, 1);"></div>
+              <span class="legend-value">&ge; +0, &lt; +1</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-swatch" style="background-color: rgba(252, 174, 145, 1);"></div>
+              <span class="legend-value">&ge; +1, &lt; +2</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-swatch" style="background-color: rgba(251, 106, 74, 1);"></div>
+              <span class="legend-value">&ge; +2, &lt; +3</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-swatch" style="background-color: rgba(222, 45, 38, 1);"></div>
+              <span class="legend-value">&ge; +3, &lt; +4</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-swatch" style="background-color: rgba(165, 15, 21, 1);"></div>
+              <span class="legend-value">&ge; +4</span>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="map-panel">
-        <h3>Mean for Large Deltas Only</h3>
-        <div class="map" ref="mapContainer3"></div>
+        <h3>Mean for &gt;3 Deltas Only (mm/day)</h3>
+        <div class="map" ref="mapContainer3">
+          <div class="legend">
+            <div class="legend-item">
+              <div class="legend-swatch" style="background-color: rgba(237, 248, 233, 1);"></div>
+              <span class="legend-value">&ge; 0, &lt; 2</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-swatch" style="background-color: rgba(186, 228, 179, 1);"></div>
+              <span class="legend-value">&ge; 2, &lt; 4</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-swatch" style="background-color: rgba(116, 196, 118, 1);"></div>
+              <span class="legend-value">&ge; 4, &lt; 6</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-swatch" style="background-color: rgba(49, 163, 84, 1);"></div>
+              <span class="legend-value">&ge; 6, &lt; 8</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-swatch" style="background-color: rgba(0, 109, 44, 1);"></div>
+              <span class="legend-value">&ge; 8</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -291,6 +360,42 @@ onMounted(async () => {
   background-color: #e0e0e0;
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  position: relative;
+}
+
+.legend {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: #fefefe;
+  padding: 10px;
+  /* border-radius: 4px; */
+  /* box-shadow: 0 2px 4px rgba(0,0,0,0.3); */
+  z-index: 1000;
+  font-size: 1.2em;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.legend-item:last-child {
+  margin-bottom: 0;
+}
+
+.legend-swatch {
+  width: 15px;
+  height: 15px;
+  margin-right: 8px;
+  border: 1px solid #333;
+  /* border-radius: 2px; */
+}
+
+.legend-value {
+  /* font-weight: 500; */
+  color: #333;
 }
 </style>
 
