@@ -369,8 +369,6 @@ onMounted(async () => {
   left: 10px;
   background: #fefefe;
   padding: 10px;
-  /* border-radius: 4px; */
-  /* box-shadow: 0 2px 4px rgba(0,0,0,0.3); */
   z-index: 1000;
   font-size: 1.2em;
 }
@@ -390,11 +388,9 @@ onMounted(async () => {
   height: 15px;
   margin-right: 8px;
   border: 1px solid #333;
-  /* border-radius: 2px; */
 }
 
 .legend-value {
-  /* font-weight: 500; */
   color: #333;
 }
 </style>
