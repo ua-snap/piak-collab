@@ -1,23 +1,50 @@
 <template>
-  <div v-if="loading" class="map-loading-overlay" role="status" aria-live="polite">
+  <div
+    v-if="loading"
+    class="map-loading-overlay"
+    role="status"
+    aria-live="polite"
+  >
     <div class="map-loading-box">
-      <svg class="map-loading-spinner" viewBox="0 0 50 50" aria-hidden="true" focusable="false">
-        <circle class="map-loading-track" cx="25" cy="25" r="20" fill="none" stroke-width="5" />
-        <circle class="map-loading-arc" cx="25" cy="25" r="20" fill="none" stroke-width="5"
-          stroke-linecap="round" stroke-dasharray="90 126" />
+      <svg
+        class="map-loading-spinner"
+        viewBox="0 0 50 50"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <circle
+          class="map-loading-track"
+          cx="25"
+          cy="25"
+          r="20"
+          fill="none"
+          stroke-width="5"
+        />
+        <circle
+          class="map-loading-arc"
+          cx="25"
+          cy="25"
+          r="20"
+          fill="none"
+          stroke-width="5"
+          stroke-linecap="round"
+          stroke-dasharray="90 126"
+        />
       </svg>
-      <span class="map-loading-text">{{ label }}</span>
+      <span class="map-loading-text"
+        >Loading map&hellip;<br />this can take up to 15 seconds.</span
+      >
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-withDefaults(defineProps<{
-  loading: boolean
-  label?: string
-}>(), {
-  label: 'Loading map...'
-})
+withDefaults(
+  defineProps<{
+    loading: boolean;
+  }>(),
+  {},
+);
 </script>
 
 <style scoped>
@@ -64,16 +91,21 @@ withDefaults(defineProps<{
   color: #333333;
   font-family: Arial, sans-serif;
   font-size: 1.1em;
-  font-weight: bold;
 }
 
 @keyframes map-loading-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes map-loading-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
