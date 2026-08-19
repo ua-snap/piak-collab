@@ -10,6 +10,8 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "bulma": "^1.0.4",
+    "bulma-switch-control": "^1.2.2",
     "leaflet": "^1.9.4",
     "nuxt": "^4.4.5",
     "plotly.js-dist-min": "^3.7.0",
