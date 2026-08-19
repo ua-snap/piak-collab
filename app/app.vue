@@ -94,6 +94,7 @@
         <h3 v-if="!aggregateView">Projected Precipitation (mm/day)</h3>
         <h3 v-else>Projected Precipitation (mm/day), Model Range</h3>
         <div class="map" ref="mapContainer1">
+          <MapLoadingOverlay :loading="mapsLoading[0]" />
           <div class="legend" v-if="!aggregateView">
             <div class="legend-item">
               <div class="legend-swatch" style="background-color: rgba(237, 248, 233, 1);"></div>
@@ -144,6 +145,7 @@
           <h3 v-if="!aggregateView">Delta From Historical (&Delta; mm/day)</h3>
           <h3 v-else>Delta From Historical (&Delta; mm/day), Model Range</h3>
           <div class="map" ref="mapContainer2">
+            <MapLoadingOverlay :loading="mapsLoading[1]" />
             <div class="legend" v-if="!aggregateView">
               <div class="legend-item">
                 <div class="legend-swatch" style="background-color: rgba(237, 248, 233, 1);"></div>
@@ -194,6 +196,7 @@
           <h3 v-if="!aggregateView">Delta From Historical (%)</h3>
           <h3 v-else>Delta From Historical (%), Model Range</h3>
           <div class="map" ref="mapContainer3">
+            <MapLoadingOverlay :loading="mapsLoading[2]" />
             <div class="legend" v-if="!aggregateView">
               <div class="legend-item">
                 <div class="legend-swatch" style="background-color: rgba(237, 248, 233, 1);"></div>
@@ -310,9 +313,7 @@ const chartContainer = ref<HTMLElement | null>(null)
 let map1: any = null
 let map2: any = null
 let map3: any = null
-let wmsLayer1: any = null
-let wmsLayer2: any = null
-let wmsLayer3: any = null
+let wmsLayers: any[] = [null, null, null]
 let L: any = null
 let Plotly: any = null
 
@@ -323,6 +324,8 @@ const selectedPosition = ref('1')
 const selectedSeason = ref('0')
 const aggregateView = ref(false)
 const isLoading = ref(false)
+// One flag per map, true while that map has WMS requests in flight
+const mapsLoading = ref([true, true, true])
 const lastClickedLat = ref<number | null>(null)
 const lastClickedLng = ref<number | null>(null)
 const lastClickedVariable = ref<string | null>(null)
@@ -352,7 +355,7 @@ watch([selectedModel, selectedScenario, selectedPosition, selectedSeason], () =>
 })
 
 // Helper to create WMS layer
-const createWMSLayer = (style: string, isAggregate: boolean) => {
+const createWMSLayer = (style: string, isAggregate: boolean, index: number) => {
   const options: any = {
     layers: 'piak_collab',
     format: 'image/png',
@@ -368,22 +371,40 @@ const createWMSLayer = (style: string, isAggregate: boolean) => {
   if (!isAggregate) {
     options.dim_model = selectedModel.value
   }
-  
-  return L.tileLayer.wms(WMS_BASE_URL, options)
+
+  const layer = L.tileLayer.wms(WMS_BASE_URL, options)
+
+  // Drive the overlay from the layer's own in-flight WMS requests. Events from a
+  // layer that has already been replaced are ignored so they can't clear the
+  // overlay of the layer that succeeded it.
+  layer.on('loading', () => {
+    if (wmsLayers[index] === layer) mapsLoading.value[index] = true
+  })
+  layer.on('load', () => {
+    if (wmsLayers[index] === layer) mapsLoading.value[index] = false
+  })
+
+  return layer
 }
 
 const updateLayers = () => {
   if (!L || !map1 || !map2 || !map3) return
 
+  const maps = [map1, map2, map3]
+
   // Remove existing WMS layers
-  ;[wmsLayer1, wmsLayer2, wmsLayer3].forEach((layer, idx) => {
-    if (layer) [map1, map2, map3][idx].removeLayer(layer)
+  wmsLayers.forEach((layer, idx) => {
+    if (layer) maps[idx].removeLayer(layer)
   })
 
   const isAggregate = aggregateView.value
-  wmsLayer1 = createWMSLayer('mean', isAggregate).addTo(map1)
-  wmsLayer2 = createWMSLayer('delta_abs', isAggregate).addTo(map2)
-  wmsLayer3 = createWMSLayer('delta_pct', isAggregate).addTo(map3)
+  // Cover the maps up front: the new tiles are requested below, and the layers
+  // only clear their own flag once every tile has come back.
+  mapsLoading.value = [true, true, true]
+  wmsLayers = ['mean', 'delta_abs', 'delta_pct'].map(
+    (style, idx) => createWMSLayer(style, isAggregate, idx)
+  )
+  wmsLayers.forEach((layer, idx) => layer.addTo(maps[idx]))
 }
 
 const handleMapClick = async (e: any) => {
