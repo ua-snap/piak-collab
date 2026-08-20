@@ -725,7 +725,10 @@ onMounted(async () => {
           : { ...mapOptionsBase, zoom: 6 }
         const map = L.map(container.value, mapOptions)
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', baseTileOptions).addTo(map)
-        addLandMask(map)
+        // Only add land mask to interactive maps (not overview map)
+        if (idx !== 0) {
+          addLandMask(map)
+        }
         map.on('click', handleMapClick)
         maps[idx] = map
       }
@@ -916,9 +919,8 @@ html, body {
   pointer-events: auto;
 }
 
-/* Overview map is not interactive for charts */
-.overview-map .leaflet-container,
-.overview-map .leaflet-container .land-mask {
-  cursor: default;
+/* Overview map has no land mask, so entire map shows not-allowed cursor */
+.overview-map .leaflet-container {
+  cursor: not-allowed;
 }
 </style>
