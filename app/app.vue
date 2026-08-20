@@ -2,17 +2,23 @@
   <div id="app-container">
     <div id="header">
       <h2 class="title is-4 has-text-white">
-        PI-AK Collaboration Rasdaman Demo
+        Downscaled CMIP6 Precipitation for Hawai&lsquo;i &mdash; Pacific Islands
+        + Alaska CASC Tech Proof-Of-Concept
       </h2>
     </div>
     <div class="overview-map-wrapper">
       <div class="overview-map-panel">
         <h3 class="title is-3">
-          Variation of 30 GCM models of Projected Precipitation across Hawaii
+          Range of Variation across 30 GCM models (NASA NEX), Projected
+          Precipitation across Hawaii, 100m
         </h3>
-        <h4 class="title is-4 has-text-centered">
-          CMIP6, Dry Season, 2070&ndash;2099, SSP3-7.0
+        <h4 class="title is-4">
+          CMIP6 (NASA NEX), Dry Season (May-October), 2070&ndash;2099, SSP3-7.0
         </h4>
+        <p class="content is-size-4">
+          Darker shaded regions show larger range of variation between models:
+          <b>less model agreement</b>.
+        </p>
         <div class="overview-map" ref="mapContainer0">
           <MapLoadingOverlay :loading="mapsLoading[0]" />
           <div class="legend">
@@ -57,14 +63,24 @@
     </div>
     <div class="container">
       <div class="content is-size-5 mt-6">
-        <p>
-          The following controls allow you to select a model, scenario, era, and
-          season. Click on any of the maps below to see a chart of the
-          corresponding variable at that location. When the "aggregate models"
-          mode is enabled, each map shows the range of values across all 30
-          models (max - min), and the charts show box plots of the distribution
-          of values across all models for each scenario.
-        </p>
+        <h3 class="title is-3">Model outputs &amp; variability</h3>
+        <ul>
+          <li>
+            Pick a model, scenario, era and season to change the maps below.
+          </li>
+          <li>Clicking on land will load charts of data values.</li>
+          <li>
+            Switch on <strong>Show Model Variation</strong> to show the range of
+            variation across all 30 models (max &minus; min). In this mode,
+            <ul style="margin-top: 0.5rem">
+              <li>Darker colors show less model agreement.</li>
+              <li>
+                Charts show box plots of the distribution of values across all
+                models for each scenario.
+              </li>
+            </ul>
+          </li>
+        </ul>
       </div>
     </div>
     <div id="controls-panel">
@@ -170,7 +186,7 @@
                 v-model="aggregateView"
               />
               <span class="check"></span>
-              <span class="control-label">Aggregate models</span>
+              <span class="control-label">Show Model Variation</span>
             </label>
           </div>
         </div>
@@ -432,6 +448,7 @@
       </div>
       <div id="plotly-chart" ref="chartContainer"></div>
     </div>
+    <Footer />
   </div>
 </template>
 
@@ -503,6 +520,10 @@ const SEASON_NAMES: Record<string, string> = {
 };
 const SCENARIO_NAMES = ["SSP1-2.6", "SSP2-4.5", "SSP3-7.0", "SSP5-8.5"];
 const RASDAMAN_BASE_URL = "https://zeus.snap.uaf.edu/rasdaman/ows";
+// USGS National Map basemap, served from the ArcGIS tile cache (note {y}/{x}
+// order). The cache is Web Mercator, so the maps run in EPSG:3857.
+const USGS_BASEMAP_URL =
+  "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}";
 const WCS_BASE_URL = `${RASDAMAN_BASE_URL}?&SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=piak_collab`;
 // Hawaii land outline, from https://github.com/glynnbird/usstatesgeojson
 const LAND_GEOJSON_URL = "/hawaii.geojson";
@@ -527,7 +548,7 @@ let landGeometry: any = null;
 
 const markers = new Map<any, any>();
 const selectedModel = ref("0");
-const selectedScenario = ref("1");
+const selectedScenario = ref("3");
 const selectedPosition = ref("1");
 const selectedSeason = ref("0");
 const aggregateView = ref(false);
@@ -649,7 +670,11 @@ const createWMSLayer = (
     format: "image/png",
     transparent: true,
     version: "1.3.0",
+    // Kept at EPSG:4326 even though the map is EPSG:3857: Rasdaman transposes
+    // the axes when asked for 3857, so it is served in 4326 and Leaflet
+    // requests the 4326 bbox of each Mercator tile.
     crs: L.CRS.EPSG4326,
+    opacity: 0.85,
     styles: isAggregate ? `${style}_range` : style,
     dim_scenario: overrides?.scenario ?? selectedScenario.value,
     dim_position: overrides?.position ?? selectedPosition.value,
@@ -908,7 +933,7 @@ onMounted(async () => {
     }
 
     const mapOptionsBase = {
-      crs: L.CRS.EPSG4326,
+      crs: L.CRS.EPSG3857,
       center: [20.25, -156.55],
       zoomSnap: 0.1,
       zoomControl: false,
@@ -921,7 +946,7 @@ onMounted(async () => {
 
     const baseTileOptions = {
       maxZoom: 18,
-      attribution: "© OpenStreetMap contributors",
+      attribution: "USGS The National Map",
       noWrap: true,
     };
 
@@ -939,13 +964,21 @@ onMounted(async () => {
         // Overview map (idx 0) gets higher zoom level and centered more west
         const mapOptions =
           idx === 0
-            ? { ...mapOptionsBase, zoom: 7, center: [20.5, -157.5] }
-            : { ...mapOptionsBase, zoom: 6 };
+            ? {
+                // Overview map is pannable/zoomable with the default mouse behavior
+                ...mapOptionsBase,
+                zoom: 8,
+                center: [20.5, -157.5],
+                zoomControl: true,
+                dragging: true,
+                scrollWheelZoom: true,
+                doubleClickZoom: true,
+                touchZoom: true,
+                boxZoom: true,
+              }
+            : { ...mapOptionsBase, zoom: 7 };
         const map = L.map(container.value, mapOptions);
-        L.tileLayer(
-          "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-          baseTileOptions,
-        ).addTo(map);
+        L.tileLayer(USGS_BASEMAP_URL, baseTileOptions).addTo(map);
         // Only add land mask to interactive maps (not overview map)
         if (idx !== 0) {
           addLandMask(map);
@@ -980,7 +1013,6 @@ onMounted(async () => {
   background-color: #2c3e50;
   color: white;
   padding: 20px;
-  text-align: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
@@ -1024,14 +1056,13 @@ onMounted(async () => {
 
 .overview-map-panel h3 {
   margin: 0 0 10px 0;
-  padding: 10px;
-  text-align: center;
   font-family: Arial, sans-serif;
   border-radius: 4px;
 }
 
 .overview-map {
-  width: 100%;
+  width: 85vw;
+  margin: 1.5rem auto;
   aspect-ratio: 3 / 2;
   background-color: #e0e0e0;
   border-radius: 4px;
@@ -1142,8 +1173,16 @@ body {
   pointer-events: auto;
 }
 
-/* Overview map has no land mask, so entire map shows not-allowed cursor */
+/* Overview map pans and zooms, so it keeps the normal Leaflet cursors */
 .overview-map .leaflet-container {
-  cursor: not-allowed;
+  cursor: grab;
+}
+
+.overview-map .leaflet-container:active {
+  cursor: grabbing;
+}
+
+.overview-map .leaflet-control-zoom a {
+  cursor: pointer;
 }
 </style>
