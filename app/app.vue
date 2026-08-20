@@ -839,6 +839,8 @@ onMounted(async () => {
   text-align: center;
   font-family: Arial, sans-serif;
   border-radius: 4px;
+  line-height: 1.5;
+  min-height: 3em;
 }
 
 .map {
