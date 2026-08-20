@@ -34,6 +34,16 @@
         </div>
       </div>
     </div>
+    <div class="container">
+      <div class="content is-size-5 mt-6">
+        <p>
+          The following controls allow you to select a model, scenario, era, and season.
+          Click on any of the maps below to see a chart of the corresponding variable at that location.
+          When the "aggregate models" mode is enabled, each map shows the range of values across all 30 models (max - min),
+          and the charts show box plots of the distribution of values across all models for each scenario.
+        </p>
+      </div>
+    </div>
     <div id="controls-panel">
       <div class="controls">
         <div class="field">
