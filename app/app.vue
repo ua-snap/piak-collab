@@ -92,7 +92,7 @@
     <div class="maps-wrapper">
       <div class="map-panel">
         <h3 v-if="!aggregateView">Projected Precipitation (mm/day)</h3>
-        <h3 v-else>Projected Precipitation (mm/day), Model Range</h3>
+        <h3 v-else>Projected Precipitation, Model Range (&Delta; mm/day)</h3>
         <div class="map" ref="mapContainer1">
           <MapLoadingOverlay :loading="mapsLoading[0]" />
           <div class="legend" v-if="!aggregateView">
@@ -143,7 +143,7 @@
       </div>
         <div class="map-panel">
           <h3 v-if="!aggregateView">Delta From Historical (&Delta; mm/day)</h3>
-          <h3 v-else>Delta From Historical (&Delta; mm/day), Model Range</h3>
+          <h3 v-else>Delta From Historical, Model Range (&Delta;<sup>2</sup> mm/day)</h3>
           <div class="map" ref="mapContainer2">
             <MapLoadingOverlay :loading="mapsLoading[1]" />
             <div class="legend" v-if="!aggregateView">
@@ -194,7 +194,7 @@
         </div>
         <div class="map-panel">
           <h3 v-if="!aggregateView">Delta From Historical (%)</h3>
-          <h3 v-else>Delta From Historical (%), Model Range</h3>
+          <h3 v-else>Delta From Historical, Model Range (&Delta;%)</h3>
           <div class="map" ref="mapContainer3">
             <MapLoadingOverlay :loading="mapsLoading[2]" />
             <div class="legend" v-if="!aggregateView">
@@ -285,16 +285,10 @@ const VARIABLE_NAMES_AGGREGATE: Record<string, string> = {
   delta_pct: 'Percent Change from Historical Precipitation'
 }
 
-const Y_AXIS_TITLES_SINGLE: Record<string, string> = {
+const Y_AXIS_TITLES: Record<string, string> = {
   mean: 'Precipitation (mm/day)',
   delta_abs: 'Change from historical (Δ mm/day)',
   delta_pct: 'Change from historical (%)'
-}
-
-const Y_AXIS_TITLES_AGGREGATE: Record<string, string> = {
-  mean: 'Model range of mean precipitation (Δ mm/day)',
-  delta_abs: 'Model range of change from historical (Δ<sup>2</sup> mm/day)',
-  delta_pct: 'Model range of % change from historical (Δ%)'
 }
 
 const ERA_NAMES: Record<string, string> = { '1': '2040-2069', '2': '2070-2099' }
@@ -501,7 +495,7 @@ const fetchDataAndCreateChart = async (lat: number, lng: number, wcsVariable: st
         tickvals: xTickLabels.map((_, i) => i),
         ticktext: tickLabels
       },
-      yaxis: { title: { text: Y_AXIS_TITLES_AGGREGATE[wcsVariable] } },
+      yaxis: { title: { text: Y_AXIS_TITLES[wcsVariable] } },
       margin: { t: 100, b: 80, l: 80, r: 30 },
       hovermode: false,
       showlegend: false
@@ -556,7 +550,7 @@ const fetchDataAndCreateChart = async (lat: number, lng: number, wcsVariable: st
     const layout = {
       title: { text: titleText, font: { size: 16 } },
       xaxis: { tickvals: xLabels.map((_, i) => i), ticktext: tickLabels, automargin: true },
-      yaxis: { title: { text: Y_AXIS_TITLES_SINGLE[wcsVariable] }, automargin: true },
+      yaxis: { title: { text: Y_AXIS_TITLES[wcsVariable] }, automargin: true },
       margin: { t: 100, b: 80, l: 80, r: 30 },
       showlegend: false
     }
