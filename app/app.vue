@@ -1,10 +1,53 @@
 <template>
   <div id="app-container">
-    <div id="controls-panel">
+    <div id="header">
       <h2 class="title is-4 has-text-white">PI-AK Collaboration Rasdaman Demo</h2>
+    </div>
+    <div class="overview-map-wrapper">
+      <div class="overview-map-panel">
+        <h3 class="title is-3">Variation of 30 GCM models of Projected Precipitation across Hawaii</h3>
+        <h4 class="title is-4 has-text-centered">CMIP6, Dry Season, 2070&ndash;2099, SSP5-8.5</h4>
+        <div class="overview-map" ref="mapContainer0">
+          <MapLoadingOverlay :loading="mapsLoading[0]" />
+          <div class="legend">
+            <div class="legend-item">
+              <div class="legend-swatch" style="background-color: rgba(247, 247, 247, 1);"></div>
+              <span class="legend-value">&ge; 0, &lt; 2 &Delta; mm/day</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-swatch" style="background-color: rgba(204, 204, 204, 1);"></div>
+              <span class="legend-value">&ge; 2, &lt; 4 &Delta; mm/day</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-swatch" style="background-color: rgba(150, 150, 150, 1);"></div>
+              <span class="legend-value">&ge; 4, &lt; 6 &Delta; mm/day</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-swatch" style="background-color: rgba(99, 99, 99, 1);"></div>
+              <span class="legend-value">&ge; 6, &lt; 8 &Delta; mm/day</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-swatch" style="background-color: rgba(37, 37, 37, 1);"></div>
+              <span class="legend-value">&ge; 8 &Delta; mm/day</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="container">
+      <div class="content is-size-5 mt-6">
+        <p>
+          The following controls allow you to select a model, scenario, era, and season.
+          Click on any of the maps below to see a chart of the corresponding variable at that location.
+          When the "aggregate models" mode is enabled, each map shows the range of values across all 30 models (max - min),
+          and the charts show box plots of the distribution of values across all models for each scenario.
+        </p>
+      </div>
+    </div>
+    <div id="controls-panel">
       <div class="controls">
         <div class="field">
-          <label class="label has-text-white" for="model">Model</label>
+          <label class="label" for="model">Model</label>
           <div class="control">
             <div class="select">
               <select id="model" v-model="selectedModel" @change="updateLayers" :disabled="aggregateView">
@@ -43,7 +86,7 @@
           </div>
         </div>
         <div class="field">
-          <label class="label has-text-white" for="scenario">Scenario</label>
+          <label class="label" for="scenario">Scenario</label>
           <div class="control">
             <div class="select">
               <select id="scenario" v-model="selectedScenario" @change="updateLayers">
@@ -56,7 +99,7 @@
           </div>
         </div>
         <div class="field">
-          <label class="label has-text-white" for="position">Era</label>
+          <label class="label" for="position">Era</label>
           <div class="control">
             <div class="select">
               <select id="position" v-model="selectedPosition" @change="updateLayers">
@@ -67,7 +110,7 @@
           </div>
         </div>
         <div class="field">
-          <label class="label has-text-white" for="season">Season</label>
+          <label class="label" for="season">Season</label>
           <div class="control">
             <div class="select">
               <select id="season" v-model="selectedSeason" @change="updateLayers">
@@ -94,7 +137,7 @@
         <h3 v-if="!aggregateView">Projected Precipitation (mm/day)</h3>
         <h3 v-else>Projected Precipitation, Model Range (&Delta; mm/day)</h3>
         <div class="map" ref="mapContainer1">
-          <MapLoadingOverlay :loading="mapsLoading[0]" />
+          <MapLoadingOverlay :loading="mapsLoading[1]" />
           <div class="legend" v-if="!aggregateView">
             <div class="legend-item">
               <div class="legend-swatch" style="background-color: rgba(237, 248, 233, 1);"></div>
@@ -145,7 +188,7 @@
           <h3 v-if="!aggregateView">Delta From Historical (&Delta; mm/day)</h3>
           <h3 v-else>Delta From Historical, Model Range (&Delta;<sup>2</sup> mm/day)</h3>
           <div class="map" ref="mapContainer2">
-            <MapLoadingOverlay :loading="mapsLoading[1]" />
+            <MapLoadingOverlay :loading="mapsLoading[2]" />
             <div class="legend" v-if="!aggregateView">
               <div class="legend-item">
                 <div class="legend-swatch" style="background-color: rgba(237, 248, 233, 1);"></div>
@@ -196,7 +239,7 @@
           <h3 v-if="!aggregateView">Delta From Historical (%)</h3>
           <h3 v-else>Delta From Historical, Model Range (&Delta;%)</h3>
           <div class="map" ref="mapContainer3">
-            <MapLoadingOverlay :loading="mapsLoading[2]" />
+            <MapLoadingOverlay :loading="mapsLoading[3]" />
             <div class="legend" v-if="!aggregateView">
               <div class="legend-item">
                 <div class="legend-swatch" style="background-color: rgba(237, 248, 233, 1);"></div>
@@ -294,22 +337,24 @@ const Y_AXIS_TITLES: Record<string, string> = {
 const ERA_NAMES: Record<string, string> = { '1': '2040-2069', '2': '2070-2099' }
 const SEASON_NAMES: Record<string, string> = { '0': 'Annual', '1': 'Dry Season', '2': 'Wet Season' }
 const SCENARIO_NAMES = ['SSP1-2.6', 'SSP2-4.5', 'SSP3-7.0', 'SSP5-8.5']
-const RASDAMAN_BASE_URL = 'https://zeus.snap.uaf.edu/rasdaman/ows?&SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=piak_collab'
-const WMS_BASE_URL = 'https://zeus.snap.uaf.edu/rasdaman/ows'
+const RASDAMAN_BASE_URL = 'https://zeus.snap.uaf.edu/rasdaman/ows'
+const WCS_BASE_URL = `${RASDAMAN_BASE_URL}?&SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=piak_collab`
 // Hawaii land outline, from https://github.com/glynnbird/usstatesgeojson
 const LAND_GEOJSON_URL = '/hawaii.geojson'
 
 // Refs
+const mapContainer0 = ref<HTMLElement | null>(null)
 const mapContainer1 = ref<HTMLElement | null>(null)
 const mapContainer2 = ref<HTMLElement | null>(null)
 const mapContainer3 = ref<HTMLElement | null>(null)
 const chartContainer = ref<HTMLElement | null>(null)
 
 // State
+let map0: any = null
 let map1: any = null
 let map2: any = null
 let map3: any = null
-let wmsLayers: any[] = [null, null, null]
+let wmsLayers: any[] = [null, null, null, null]
 let L: any = null
 let Plotly: any = null
 let landGeoJson: any = null
@@ -323,7 +368,7 @@ const selectedSeason = ref('0')
 const aggregateView = ref(false)
 const isLoading = ref(false)
 // One flag per map, true while that map has WMS requests in flight
-const mapsLoading = ref([true, true, true])
+const mapsLoading = ref([true, true, true, true])
 const lastClickedLat = ref<number | null>(null)
 const lastClickedLng = ref<number | null>(null)
 const lastClickedVariable = ref<string | null>(null)
@@ -407,7 +452,12 @@ const isOnLand = (lat: number, lng: number) => {
 }
 
 // Helper to create WMS layer
-const createWMSLayer = (style: string, isAggregate: boolean, index: number) => {
+const createWMSLayer = (
+  style: string,
+  isAggregate: boolean,
+  index: number,
+  overrides?: { model?: string; scenario?: string; position?: string; season?: string }
+) => {
   const options: any = {
     layers: 'piak_collab',
     format: 'image/png',
@@ -415,16 +465,16 @@ const createWMSLayer = (style: string, isAggregate: boolean, index: number) => {
     version: '1.3.0',
     crs: L.CRS.EPSG4326,
     styles: isAggregate ? `${style}_range` : style,
-    dim_scenario: selectedScenario.value,
-    dim_position: selectedPosition.value,
-    dim_season: selectedSeason.value
+    dim_scenario: overrides?.scenario ?? selectedScenario.value,
+    dim_position: overrides?.position ?? selectedPosition.value,
+    dim_season: overrides?.season ?? selectedSeason.value
   }
   
   if (!isAggregate) {
-    options.dim_model = selectedModel.value
+    options.dim_model = overrides?.model ?? selectedModel.value
   }
 
-  const layer = L.tileLayer.wms(WMS_BASE_URL, options)
+  const layer = L.tileLayer.wms(RASDAMAN_BASE_URL, options)
 
   // Drive the overlay from the layer's own in-flight WMS requests. Events from a
   // layer that has already been replaced are ignored so they can't clear the
@@ -440,9 +490,9 @@ const createWMSLayer = (style: string, isAggregate: boolean, index: number) => {
 }
 
 const updateLayers = () => {
-  if (!L || !map1 || !map2 || !map3) return
+  if (!L || !map0 || !map1 || !map2 || !map3) return
 
-  const maps = [map1, map2, map3]
+  const maps = [map0, map1, map2, map3]
 
   // Remove existing WMS layers
   wmsLayers.forEach((layer, idx) => {
@@ -452,10 +502,14 @@ const updateLayers = () => {
   const isAggregate = aggregateView.value
   // Cover the maps up front: the new tiles are requested below, and the layers
   // only clear their own flag once every tile has come back.
-  mapsLoading.value = [true, true, true]
-  wmsLayers = ['mean', 'delta_abs', 'delta_pct'].map(
-    (style, idx) => createWMSLayer(style, isAggregate, idx)
-  )
+  mapsLoading.value = [true, true, true, true]
+  // First map always shows mean for model 21, scenario 3, season 1, position 1
+  wmsLayers = [
+    createWMSLayer('mean_range', false, 0, { scenario: '4', season: '1', position: '2' }),
+    ...['mean', 'delta_abs', 'delta_pct'].map(
+      (style, idx) => createWMSLayer(style, isAggregate, idx + 1)
+    )
+  ]
   wmsLayers.forEach((layer, idx) => layer.addTo(maps[idx]))
 }
 
@@ -467,6 +521,9 @@ const handleMapClick = async (e: any) => {
 
   // Only land has data behind it; ignore clicks in the ocean
   if (!isOnLand(lat, lng)) return
+
+  // Overview map (map0) is not interactive for charts
+  if (e.target === map0) return
 
   Plotly.purge(chartContainer.value)
 
@@ -501,8 +558,8 @@ const fetchDataAndCreateChart = async (lat: number, lng: number, wcsVariable: st
     let scenarioNames = ['Historical', ...SCENARIO_NAMES]
     
     // Fetch historical and projected data
-    const historicalUrl = `${RASDAMAN_BASE_URL}&SUBSET=Lon(${lng})&SUBSET=Lat(${lat})&SUBSET=scenario(0)&SUBSET=position(0)&SUBSET=season(${season})&RANGESUBSET=${wcsVariable}&FORMAT=application/json`
-    const projectedUrl = `${RASDAMAN_BASE_URL}&SUBSET=Lon(${lng})&SUBSET=Lat(${lat})&SUBSET=position(${position})&SUBSET=season(${season})&RANGESUBSET=${wcsVariable}&FORMAT=application/json`
+    const historicalUrl = `${WCS_BASE_URL}&SUBSET=Lon(${lng})&SUBSET=Lat(${lat})&SUBSET=scenario(0)&SUBSET=position(0)&SUBSET=season(${season})&RANGESUBSET=${wcsVariable}&FORMAT=application/json`
+    const projectedUrl = `${WCS_BASE_URL}&SUBSET=Lon(${lng})&SUBSET=Lat(${lat})&SUBSET=position(${position})&SUBSET=season(${season})&RANGESUBSET=${wcsVariable}&FORMAT=application/json`
     
     const [historicalJson, projectedJson] = await Promise.all([
       fetch(historicalUrl).then(r => r.json()),
@@ -569,8 +626,8 @@ const fetchDataAndCreateChart = async (lat: number, lng: number, wcsVariable: st
     // Single model view
     const model = selectedModel.value
     
-    const historicalUrl = `${RASDAMAN_BASE_URL}&SUBSET=Lon(${lng})&SUBSET=Lat(${lat})&SUBSET=model(${model})&SUBSET=scenario(0)&SUBSET=position(0)&SUBSET=season(${season})&RANGESUBSET=${wcsVariable}&FORMAT=application/json`
-    const projectedUrl = `${RASDAMAN_BASE_URL}&SUBSET=Lon(${lng})&SUBSET=Lat(${lat})&SUBSET=model(${model})&SUBSET=position(${position})&SUBSET=season(${season})&RANGESUBSET=${wcsVariable}&FORMAT=application/json`
+    const historicalUrl = `${WCS_BASE_URL}&SUBSET=Lon(${lng})&SUBSET=Lat(${lat})&SUBSET=model(${model})&SUBSET=scenario(0)&SUBSET=position(0)&SUBSET=season(${season})&RANGESUBSET=${wcsVariable}&FORMAT=application/json`
+    const projectedUrl = `${WCS_BASE_URL}&SUBSET=Lon(${lng})&SUBSET=Lat(${lat})&SUBSET=model(${model})&SUBSET=position(${position})&SUBSET=season(${season})&RANGESUBSET=${wcsVariable}&FORMAT=application/json`
     
     const [historicalMean, projectedMeans] = await Promise.all([
       fetch(historicalUrl).then(r => r.json()),
@@ -638,10 +695,9 @@ onMounted(async () => {
       console.error('Error loading land mask:', error)
     }
 
-    const mapOptions = {
+    const mapOptionsBase = {
       crs: L.CRS.EPSG4326,
       center: [20.25, -156.55],
-      zoom: 6,
       zoomSnap: 0.1,
       zoomControl: false,
       dragging: false,
@@ -658,20 +714,27 @@ onMounted(async () => {
     }
 
     // Initialize maps
-    const mapContainers = [mapContainer1, mapContainer2, mapContainer3]
-    const maps = [null, null, null]
+    const mapContainers = [mapContainer0, mapContainer1, mapContainer2, mapContainer3]
+    const maps = [null, null, null, null]
     
     mapContainers.forEach((container, idx) => {
       if (container.value) {
+        // Overview map (idx 0) gets higher zoom level and centered more west
+        const mapOptions = idx === 0 
+          ? { ...mapOptionsBase, zoom: 7, center: [20.5, -157.5] }
+          : { ...mapOptionsBase, zoom: 6 }
         const map = L.map(container.value, mapOptions)
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', baseTileOptions).addTo(map)
-        addLandMask(map)
+        // Only add land mask to interactive maps (not overview map)
+        if (idx !== 0) {
+          addLandMask(map)
+        }
         map.on('click', handleMapClick)
         maps[idx] = map
       }
     })
     
-    ;[map1, map2, map3] = maps
+    ;[map0, map1, map2, map3] = maps
 
     // Initialize layers after maps are ready
     setTimeout(() => {
@@ -693,42 +756,67 @@ onMounted(async () => {
   margin-bottom: 200px;
 }
 
+#header {
+  background-color: #2c3e50;
+  color: white;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+#header .title {
+  margin: 0;
+}
+
+#controls-panel {
+  margin-top: 60px;
+  padding: 20px;
+}
+
 .controls {
   margin: 0 auto;
   display: flex;
   gap: 20px;
   flex-wrap: wrap;
   justify-content: center;
+  align-items: flex-end;
 }
 
-#controls-panel {
-  background-color: #2c3e50;
-  color: white;
-  padding: 20px;
-  display: flex;
-  gap: 20px;
-  align-items: center;
-  flex-wrap: wrap;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-  text-align: center;
+.controls .field {
+  margin: 0;
 }
 
-#controls-panel .title {
-  width: 100%;
-  margin-bottom: 10px;
-}
-
-#controls-panel .field {
-  margin: 0 10px;
-}
-
-#controls-panel .switch-field {
-  margin-top: 39px;
+.controls .switch-field {
+  margin-bottom: 0;
   font-weight: bold;
 }
 
-#controls-panel .switch .control-label {
-  color: white;
+.overview-map-wrapper {
+  padding: 20px 20px 0 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.overview-map-panel {
+  width: 100%;
+  margin: 0 auto;
+}
+
+.overview-map-panel h3 {
+  margin: 0 0 10px 0;
+  padding: 10px;
+  text-align: center;
+  font-family: Arial, sans-serif;
+  border-radius: 4px;
+}
+
+.overview-map {
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  background-color: #e0e0e0;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  position: relative;
 }
 
 .maps-wrapper {
@@ -751,6 +839,8 @@ onMounted(async () => {
   text-align: center;
   font-family: Arial, sans-serif;
   border-radius: 4px;
+  line-height: 1.5;
+  min-height: 3em;
 }
 
 .map {
@@ -829,5 +919,10 @@ html, body {
 .leaflet-container .leaflet-marker-icon {
   cursor: pointer;
   pointer-events: auto;
+}
+
+/* Overview map has no land mask, so entire map shows not-allowed cursor */
+.overview-map .leaflet-container {
+  cursor: not-allowed;
 }
 </style>
