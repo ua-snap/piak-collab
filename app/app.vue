@@ -296,6 +296,8 @@ const SEASON_NAMES: Record<string, string> = { '0': 'Annual', '1': 'Dry Season',
 const SCENARIO_NAMES = ['SSP1-2.6', 'SSP2-4.5', 'SSP3-7.0', 'SSP5-8.5']
 const RASDAMAN_BASE_URL = 'https://zeus.snap.uaf.edu/rasdaman/ows?&SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=piak_collab'
 const WMS_BASE_URL = 'https://zeus.snap.uaf.edu/rasdaman/ows'
+// Hawaii land outline, from https://github.com/glynnbird/usstatesgeojson
+const LAND_GEOJSON_URL = '/hawaii.geojson'
 
 // Refs
 const mapContainer1 = ref<HTMLElement | null>(null)
@@ -310,6 +312,8 @@ let map3: any = null
 let wmsLayers: any[] = [null, null, null]
 let L: any = null
 let Plotly: any = null
+let landGeoJson: any = null
+let landGeometry: any = null
 
 const markers = new Map<any, any>()
 const selectedModel = ref('0')
@@ -347,6 +351,60 @@ watch([selectedModel, selectedScenario, selectedPosition, selectedSeason], () =>
     fetchDataAndCreateChart(lastClickedLat.value, lastClickedLng.value, lastClickedVariable.value)
   }
 })
+
+// Load the Hawaii land outline used to mask out clicks in the ocean
+const loadLandMask = async () => {
+  const response = await fetch(LAND_GEOJSON_URL)
+  if (!response.ok) throw new Error(`Failed to load land mask: ${response.status}`)
+  landGeoJson = await response.json()
+  landGeometry = landGeoJson.type === 'Feature' ? landGeoJson.geometry : landGeoJson
+}
+
+// Transparent overlay drawn over the islands: it carries no visual weight, but
+// gives the pointer something to hit so land reads as clickable and ocean does not.
+const addLandMask = (map: any) => {
+  if (!L || !map || !landGeoJson) return
+  L.geoJSON(landGeoJson, {
+    interactive: true,
+    style: () => ({
+      stroke: false,
+      weight: 0,
+      fill: true,
+      fillColor: '#000000',
+      fillOpacity: 0,
+      className: 'land-mask'
+    })
+  }).addTo(map)
+}
+
+// Ray casting: is (lng, lat) inside this ring of [lng, lat] pairs?
+const pointInRing = (lng: number, lat: number, ring: number[][]) => {
+  let inside = false
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i] as [number, number]
+    const [xj, yj] = ring[j] as [number, number]
+    const crosses = (yi > lat) !== (yj > lat) &&
+      lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi
+    if (crosses) inside = !inside
+  }
+  return inside
+}
+
+// First ring is the outline, any remaining rings are holes
+const pointInPolygon = (lng: number, lat: number, rings: number[][][]) => {
+  if (!rings.length || !pointInRing(lng, lat, rings[0]!)) return false
+  return rings.slice(1).every(hole => !pointInRing(lng, lat, hole))
+}
+
+const isOnLand = (lat: number, lng: number) => {
+  // Without the mask loaded, don't lock the user out of the maps
+  if (!landGeometry) return true
+  const normalizedLng = ((lng + 180) % 360 + 360) % 360 - 180
+  const polygons = landGeometry.type === 'MultiPolygon'
+    ? landGeometry.coordinates
+    : [landGeometry.coordinates]
+  return polygons.some((rings: number[][][]) => pointInPolygon(normalizedLng, lat, rings))
+}
 
 // Helper to create WMS layer
 const createWMSLayer = (style: string, isAggregate: boolean, index: number) => {
@@ -404,10 +462,13 @@ const updateLayers = () => {
 const handleMapClick = async (e: any) => {
   if (!L || !Plotly) return
 
-  Plotly.purge(chartContainer.value)
-
   const lat = e.latlng.lat
   const lng = e.latlng.lng
+
+  // Only land has data behind it; ignore clicks in the ocean
+  if (!isOnLand(lat, lng)) return
+
+  Plotly.purge(chartContainer.value)
 
   // Remove existing markers and add new one to clicked map
   markers.forEach((marker, map) => map.removeLayer(marker))
@@ -571,6 +632,12 @@ onMounted(async () => {
     L = (await import('leaflet')).default
     Plotly = (await import('plotly.js-dist-min')).default
 
+    try {
+      await loadLandMask()
+    } catch (error) {
+      console.error('Error loading land mask:', error)
+    }
+
     const mapOptions = {
       crs: L.CRS.EPSG4326,
       center: [20.25, -156.55],
@@ -598,6 +665,7 @@ onMounted(async () => {
       if (container.value) {
         const map = L.map(container.value, mapOptions)
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', baseTileOptions).addTo(map)
+        addLandMask(map)
         map.on('click', handleMapClick)
         maps[idx] = map
       }
@@ -724,10 +792,6 @@ onMounted(async () => {
   color: #333;
 }
 
-.leaflet-container {
-    cursor: pointer;
-}
-
 #chart-container {
   margin: 20px auto;
   padding: 20px;
@@ -754,5 +818,16 @@ html, body {
   padding: 0;
   height: 100%;
   font-family: Arial, sans-serif;
+}
+
+/* Ocean is not clickable; the transparent land mask is */
+.leaflet-container {
+  cursor: not-allowed;
+}
+
+.leaflet-container .land-mask,
+.leaflet-container .leaflet-marker-icon {
+  cursor: pointer;
+  pointer-events: auto;
 }
 </style>
