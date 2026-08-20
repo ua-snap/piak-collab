@@ -6,29 +6,29 @@
     <div class="overview-map-wrapper">
       <div class="overview-map-panel">
         <h3 class="title is-3">Variation of 30 GCM models of Projected Precipitation across Hawaii</h3>
-        <h4 class="title is-4 has-text-centered">CMIP6, Dry Season, 2070&ndash;2099, SSP5-8.5 (&Delta; mm/day)</h4>
+        <h4 class="title is-4 has-text-centered">CMIP6, Dry Season, 2070&ndash;2099, SSP5-8.5</h4>
         <div class="overview-map" ref="mapContainer0">
           <MapLoadingOverlay :loading="mapsLoading[0]" />
           <div class="legend">
             <div class="legend-item">
               <div class="legend-swatch" style="background-color: rgba(247, 247, 247, 1);"></div>
-              <span class="legend-value">&ge; 0, &lt; 2 </span>
+              <span class="legend-value">&ge; 0, &lt; 2 &Delta; mm/day</span>
             </div>
             <div class="legend-item">
               <div class="legend-swatch" style="background-color: rgba(204, 204, 204, 1);"></div>
-              <span class="legend-value">&ge; 2, &lt; 4</span>
+              <span class="legend-value">&ge; 2, &lt; 4 &Delta; mm/day</span>
             </div>
             <div class="legend-item">
               <div class="legend-swatch" style="background-color: rgba(150, 150, 150, 1);"></div>
-              <span class="legend-value">&ge; 4, &lt; 6</span>
+              <span class="legend-value">&ge; 4, &lt; 6 &Delta; mm/day</span>
             </div>
             <div class="legend-item">
               <div class="legend-swatch" style="background-color: rgba(99, 99, 99, 1);"></div>
-              <span class="legend-value">&ge; 6, &lt; 8</span>
+              <span class="legend-value">&ge; 6, &lt; 8 &Delta; mm/day</span>
             </div>
             <div class="legend-item">
               <div class="legend-swatch" style="background-color: rgba(37, 37, 37, 1);"></div>
-              <span class="legend-value">&ge; 8</span>
+              <span class="legend-value">&ge; 8 &Delta; mm/day</span>
             </div>
           </div>
         </div>
