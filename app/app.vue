@@ -10,7 +10,7 @@
       <div class="overview-map-panel">
         <h3 class="title is-3">
           Range of Variation across 30 GCM models (NASA NEX), Projected
-          Precipitation across Hawaii, 100m
+          Precipitation across Hawaii, 250m
         </h3>
         <h4 class="title is-4">
           CMIP6 (NASA NEX), Dry Season (May-October), 2070&ndash;2099, SSP3-7.0
