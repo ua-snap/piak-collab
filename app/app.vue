@@ -926,6 +926,15 @@ onMounted(async () => {
     L = (await import("leaflet")).default;
     Plotly = (await import("plotly.js-dist-min")).default;
 
+    // Fix Leaflet marker icons for production builds
+    // Point to local marker images in public folder
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: '/marker-icon-2x.png',
+      iconUrl: '/marker-icon.png',
+      shadowUrl: '/marker-shadow.png',
+    });
+
     try {
       await loadLandMask();
     } catch (error) {
