@@ -15,6 +15,29 @@
         <h4 class="title is-4">
           CMIP6 (NASA NEX), Dry Season (May-October), 2070&ndash;2099, SSP3-7.0
         </h4>
+        <p class="content is-size-4"><strong>Choose between one of two modes for the webapp below.</strong> When "8 hand-picked models" mode is selected, model variation maps and charts are based on only the the following models: CNRM-CM6-1 CNRM-ESM2-1, EC-Earth3, FGOALS-g3, GFDL-CM4, GFDL-ESM4, IPSL-CM6A-LR, and KIOST-ESM.</p>
+        <div class="field model-count-selector">
+          <div class="control is-size-4">
+            <label class="radio is-size-4">
+              <input
+                type="radio"
+                name="modelCount"
+                :value="false"
+                v-model="use8Models"
+              />
+              All 30 models
+            </label>
+            <label class="radio is-size-4">
+              <input
+                type="radio"
+                name="modelCount"
+                :value="true"
+                v-model="use8Models"
+              />
+              8 hand-picked models
+            </label>
+          </div>
+        </div>
         <p class="content is-size-4">
           Darker shaded regions show larger range of variation between models:
           <b>less model agreement</b>.
@@ -95,36 +118,36 @@
                 @change="updateLayers"
                 :disabled="aggregateView"
               >
-                <option value="0">ACCESS-CM2</option>
-                <option value="1">ACCESS-ESM1-5</option>
-                <option value="2">BCC-CSM2-MR</option>
-                <option value="3">CanESM5</option>
-                <option value="4">CMCC-ESM2</option>
+                <option v-if="!use8Models" value="0">ACCESS-CM2</option>
+                <option v-if="!use8Models" value="1">ACCESS-ESM1-5</option>
+                <option v-if="!use8Models" value="2">BCC-CSM2-MR</option>
+                <option v-if="!use8Models" value="3">CanESM5</option>
+                <option v-if="!use8Models" value="4">CMCC-ESM2</option>
                 <option value="5">CNRM-CM6-1</option>
                 <option value="6">CNRM-ESM2-1</option>
                 <option value="7">EC-Earth3</option>
-                <option value="8">EC-Earth3-Veg-LR</option>
+                <option v-if="!use8Models" value="8">EC-Earth3-Veg-LR</option>
                 <option value="9">FGOALS-g3</option>
                 <option value="10">GFDL-CM4</option>
                 <option value="11">GFDL-ESM4</option>
-                <option value="12">GISS-E2-1-G</option>
-                <option value="13">HadGEM3-GC31-LL</option>
-                <option value="14">HadGEM3-GC31-MM</option>
-                <option value="15">INM-CM4-8</option>
-                <option value="16">INM-CM5-0</option>
+                <option v-if="!use8Models" value="12">GISS-E2-1-G</option>
+                <option v-if="!use8Models" value="13">HadGEM3-GC31-LL</option>
+                <option v-if="!use8Models" value="14">HadGEM3-GC31-MM</option>
+                <option v-if="!use8Models" value="15">INM-CM4-8</option>
+                <option v-if="!use8Models" value="16">INM-CM5-0</option>
                 <option value="17">IPSL-CM6A-LR</option>
-                <option value="18">KACE-1-0-G</option>
+                <option v-if="!use8Models" value="18">KACE-1-0-G</option>
                 <option value="19">KIOST-ESM</option>
-                <option value="20">MIROC6</option>
-                <option value="21">MIROC-ES2L</option>
-                <option value="22">MPI-ESM1-2-HR</option>
-                <option value="23">MPI-ESM1-2-LR</option>
-                <option value="24">MRI-ESM2-0</option>
-                <option value="25">NESM3</option>
-                <option value="26">NorESM2-LM</option>
-                <option value="27">NorESM2-MM</option>
-                <option value="28">TaiESM1</option>
-                <option value="29">UKESM1-0-LL</option>
+                <option v-if="!use8Models" value="20">MIROC6</option>
+                <option v-if="!use8Models" value="21">MIROC-ES2L</option>
+                <option v-if="!use8Models" value="22">MPI-ESM1-2-HR</option>
+                <option v-if="!use8Models" value="23">MPI-ESM1-2-LR</option>
+                <option v-if="!use8Models" value="24">MRI-ESM2-0</option>
+                <option v-if="!use8Models" value="25">NESM3</option>
+                <option v-if="!use8Models" value="26">NorESM2-LM</option>
+                <option v-if="!use8Models" value="27">NorESM2-MM</option>
+                <option v-if="!use8Models" value="28">TaiESM1</option>
+                <option v-if="!use8Models" value="29">UKESM1-0-LL</option>
               </select>
             </div>
           </div>
@@ -491,6 +514,9 @@ const MODEL_NAMES = [
   "UKESM1-0-LL",
 ];
 
+// 8 hand-picked models and their indices
+const EIGHT_MODEL_INDICES = [5, 6, 7, 9, 10, 11, 17, 19];
+
 const VARIABLE_NAMES_SINGLE: Record<string, string> = {
   mean: "Mean Precipitation",
   delta_abs: "Absolute Change from Historical Precipitation",
@@ -552,6 +578,7 @@ const selectedScenario = ref("3");
 const selectedPosition = ref("1");
 const selectedSeason = ref("0");
 const aggregateView = ref(false);
+const use8Models = ref(false);
 const isLoading = ref(false);
 // One flag per map, true while that map has WMS requests in flight
 const mapsLoading = ref([true, true, true, true]);
@@ -561,6 +588,27 @@ const lastClickedVariable = ref<string | null>(null);
 
 // Watch aggregateView and update layers when it changes
 watch(aggregateView, () => {
+  // Clear all markers when view changes
+  markers.forEach((marker, map) => map.removeLayer(marker));
+  markers.clear();
+  // Clear the chart
+  if (chartContainer.value && Plotly) {
+    Plotly.purge(chartContainer.value);
+  }
+  // Clear stored location
+  lastClickedLat.value = null;
+  lastClickedLng.value = null;
+  lastClickedVariable.value = null;
+  updateLayers();
+});
+
+// Watch use8Models and update layers when it changes
+watch(use8Models, () => {
+  // If switching to 8-model mode and current model is not in the 8 models, switch to first 8-model
+  if (use8Models.value && !EIGHT_MODEL_INDICES.includes(parseInt(selectedModel.value))) {
+    selectedModel.value = String(EIGHT_MODEL_INDICES[0]);
+  }
+
   // Clear all markers when view changes
   markers.forEach((marker, map) => map.removeLayer(marker));
   markers.clear();
@@ -665,6 +713,12 @@ const createWMSLayer = (
     season?: string;
   },
 ) => {
+  // Append _8models suffix to styles ending in _range when 8-model mode is enabled
+  let styleName = isAggregate ? `${style}_range` : style;
+  if (use8Models.value && styleName.endsWith('_range')) {
+    styleName += '_8models';
+  }
+
   const options: any = {
     layers: "piak_collab",
     format: "image/png",
@@ -675,7 +729,7 @@ const createWMSLayer = (
     // requests the 4326 bbox of each Mercator tile.
     crs: L.CRS.EPSG4326,
     opacity: 0.85,
-    styles: isAggregate ? `${style}_range` : style,
+    styles: styleName,
     dim_scenario: overrides?.scenario ?? selectedScenario.value,
     dim_position: overrides?.position ?? selectedPosition.value,
     dim_season: overrides?.season ?? selectedSeason.value,
@@ -774,17 +828,25 @@ const fetchDataAndCreateChart = async (
   };
 
   if (aggregateView.value) {
-    // Aggregate view: fetch data for all 30 models across all scenarios
+    // Aggregate view: fetch data for all models across all scenarios
     let scenarioNames = ["Historical", ...SCENARIO_NAMES];
 
     // Fetch historical and projected data
     const historicalUrl = `${WCS_BASE_URL}&SUBSET=Lon(${lng})&SUBSET=Lat(${lat})&SUBSET=scenario(0)&SUBSET=position(0)&SUBSET=season(${season})&RANGESUBSET=${wcsVariable}&FORMAT=application/json`;
     const projectedUrl = `${WCS_BASE_URL}&SUBSET=Lon(${lng})&SUBSET=Lat(${lat})&SUBSET=position(${position})&SUBSET=season(${season})&RANGESUBSET=${wcsVariable}&FORMAT=application/json`;
 
-    const [historicalJson, projectedJson] = await Promise.all([
+    const [historicalJsonRaw, projectedJsonRaw] = await Promise.all([
       fetch(historicalUrl).then((r) => r.json()),
       fetch(projectedUrl).then((r) => r.json()),
     ]);
+
+    // Filter to 8 models if in 8-model mode
+    const historicalJson = use8Models.value
+      ? EIGHT_MODEL_INDICES.map(idx => historicalJsonRaw[idx])
+      : historicalJsonRaw;
+    const projectedJson = use8Models.value
+      ? EIGHT_MODEL_INDICES.map(idx => projectedJsonRaw[idx])
+      : projectedJsonRaw;
 
     // Transpose projected data: group by scenario
     const scenarioData: any[][] = [];
@@ -926,6 +988,15 @@ onMounted(async () => {
     L = (await import("leaflet")).default;
     Plotly = (await import("plotly.js-dist-min")).default;
 
+    // Fix Leaflet marker icons for production builds
+    // Point to local marker images in public folder
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: '/marker-icon-2x.png',
+      iconUrl: '/marker-icon.png',
+      shadowUrl: '/marker-shadow.png',
+    });
+
     try {
       await loadLandMask();
     } catch (error) {
@@ -1058,6 +1129,26 @@ onMounted(async () => {
   margin: 0 0 10px 0;
   font-family: Arial, sans-serif;
   border-radius: 4px;
+}
+
+.model-count-selector {
+  margin: 1.5rem 0;
+  padding: 0.75rem;
+}
+
+.model-count-selector .control {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.model-count-selector .radio {
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.model-count-selector .radio input[type="radio"] {
+  margin-right: 0.5rem;
+  cursor: pointer;
 }
 
 .overview-map {
