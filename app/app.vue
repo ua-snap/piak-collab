@@ -66,20 +66,9 @@
         <h3 class="title is-3">Model outputs &amp; variability</h3>
         <ul>
           <li>
-            Pick a model, scenario, era and season to change the maps below.
+            Pick a model, scenario, horizon and season to change the maps below.
           </li>
           <li>Clicking on land will load charts of data values.</li>
-          <li>
-            Switch on <strong>Show Model Variation</strong> to show the range of
-            variation across all 30 models (max &minus; min). In this mode,
-            <ul style="margin-top: 0.5rem">
-              <li>Darker colors show less model agreement.</li>
-              <li>
-                Charts show box plots of the distribution of values across all
-                models for each scenario.
-              </li>
-            </ul>
-          </li>
         </ul>
       </div>
     </div>
@@ -147,7 +136,7 @@
           </div>
         </div>
         <div class="field">
-          <label class="label" for="position">Era</label>
+          <label class="label" for="position">Horizon</label>
           <div class="control">
             <div class="select">
               <select
@@ -155,8 +144,8 @@
                 v-model="selectedPosition"
                 @change="updateLayers"
               >
-                <option value="1">2040-2069</option>
-                <option value="2">2070-2099</option>
+                <option value="1">Mid-Century (2040-2069)</option>
+                <option value="2">Late-Century (2070-2099)</option>
               </select>
             </div>
           </div>
@@ -177,110 +166,16 @@
             </div>
           </div>
         </div>
-        <div class="field switch-field">
-          <div class="control">
-            <label class="switch is-rounded is-info">
-              <input
-                id="aggregate-view"
-                type="checkbox"
-                v-model="aggregateView"
-              />
-              <span class="check"></span>
-              <span class="control-label">Show Model Variation</span>
-            </label>
-          </div>
-        </div>
       </div>
     </div>
     <div class="maps-wrapper">
-      <div class="map-panel">
-        <h3 v-if="!aggregateView">Projected Precipitation (mm/day)</h3>
-        <h3 v-else>Projected Precipitation, Model Range (&Delta; mm/day)</h3>
-        <div class="map" ref="mapContainer1">
-          <MapLoadingOverlay :loading="mapsLoading[1]" />
-          <div class="legend" v-if="!aggregateView">
-            <div class="legend-item">
-              <div
-                class="legend-swatch"
-                style="background-color: rgba(237, 248, 233, 1)"
-              ></div>
-              <span class="legend-value">&ge; 0, &lt; 2</span>
-            </div>
-            <div class="legend-item">
-              <div
-                class="legend-swatch"
-                style="background-color: rgba(186, 228, 179, 1)"
-              ></div>
-              <span class="legend-value">&ge; 2, &lt; 4</span>
-            </div>
-            <div class="legend-item">
-              <div
-                class="legend-swatch"
-                style="background-color: rgba(116, 196, 118, 1)"
-              ></div>
-              <span class="legend-value">&ge; 4, &lt; 6</span>
-            </div>
-            <div class="legend-item">
-              <div
-                class="legend-swatch"
-                style="background-color: rgba(49, 163, 84, 1)"
-              ></div>
-              <span class="legend-value">&ge; 6, &lt; 8</span>
-            </div>
-            <div class="legend-item">
-              <div
-                class="legend-swatch"
-                style="background-color: rgba(0, 109, 44, 1)"
-              ></div>
-              <span class="legend-value">&ge; 8</span>
-            </div>
-          </div>
-          <div class="legend" v-else>
-            <div class="legend-item">
-              <div
-                class="legend-swatch"
-                style="background-color: rgba(247, 247, 247, 1)"
-              ></div>
-              <span class="legend-value">&ge; 0, &lt; 2</span>
-            </div>
-            <div class="legend-item">
-              <div
-                class="legend-swatch"
-                style="background-color: rgba(204, 204, 204, 1)"
-              ></div>
-              <span class="legend-value">&ge; 2, &lt; 4</span>
-            </div>
-            <div class="legend-item">
-              <div
-                class="legend-swatch"
-                style="background-color: rgba(150, 150, 150, 1)"
-              ></div>
-              <span class="legend-value">&ge; 4, &lt; 6</span>
-            </div>
-            <div class="legend-item">
-              <div
-                class="legend-swatch"
-                style="background-color: rgba(99, 99, 99, 1)"
-              ></div>
-              <span class="legend-value">&ge; 6, &lt; 8</span>
-            </div>
-            <div class="legend-item">
-              <div
-                class="legend-swatch"
-                style="background-color: rgba(37, 37, 37, 1)"
-              ></div>
-              <span class="legend-value">&ge; 8</span>
-            </div>
-          </div>
-        </div>
-      </div>
       <div class="map-panel">
         <h3 v-if="!aggregateView">Delta From Historical (&Delta; mm/day)</h3>
         <h3 v-else>
           Delta From Historical, Model Range (&Delta;<sup>2</sup> mm/day)
         </h3>
-        <div class="map" ref="mapContainer2">
-          <MapLoadingOverlay :loading="mapsLoading[2]" />
+        <div class="map" ref="mapContainer1">
+          <MapLoadingOverlay :loading="mapsLoading[1]" />
           <div class="legend" v-if="!aggregateView">
             <div class="legend-item">
               <div
@@ -360,8 +255,8 @@
       <div class="map-panel">
         <h3 v-if="!aggregateView">Delta From Historical (%)</h3>
         <h3 v-else>Delta From Historical, Model Range (&Delta;%)</h3>
-        <div class="map" ref="mapContainer3">
-          <MapLoadingOverlay :loading="mapsLoading[3]" />
+        <div class="map" ref="mapContainer2">
+          <MapLoadingOverlay :loading="mapsLoading[2]" />
           <div class="legend" v-if="!aggregateView">
             <div class="legend-item">
               <div
@@ -509,9 +404,9 @@ const Y_AXIS_TITLES: Record<string, string> = {
   delta_pct: "Change from historical (%)",
 };
 
-const ERA_NAMES: Record<string, string> = {
-  "1": "2040-2069",
-  "2": "2070-2099",
+const HORIZON_NAMES: Record<string, string> = {
+  "1": "Mid-Century (2040-2069)",
+  "2": "Late-Century (2070-2099)",
 };
 const SEASON_NAMES: Record<string, string> = {
   "0": "Annual",
@@ -532,15 +427,13 @@ const LAND_GEOJSON_URL = "/hawaii.geojson";
 const mapContainer0 = ref<HTMLElement | null>(null);
 const mapContainer1 = ref<HTMLElement | null>(null);
 const mapContainer2 = ref<HTMLElement | null>(null);
-const mapContainer3 = ref<HTMLElement | null>(null);
 const chartContainer = ref<HTMLElement | null>(null);
 
 // State
 let map0: any = null;
 let map1: any = null;
 let map2: any = null;
-let map3: any = null;
-let wmsLayers: any[] = [null, null, null, null];
+let wmsLayers: any[] = [null, null, null];
 let L: any = null;
 let Plotly: any = null;
 let landGeoJson: any = null;
@@ -554,7 +447,7 @@ const selectedSeason = ref("0");
 const aggregateView = ref(false);
 const isLoading = ref(false);
 // One flag per map, true while that map has WMS requests in flight
-const mapsLoading = ref([true, true, true, true]);
+const mapsLoading = ref([true, true, true]);
 const lastClickedLat = ref<number | null>(null);
 const lastClickedLng = ref<number | null>(null);
 const lastClickedVariable = ref<string | null>(null);
@@ -701,9 +594,9 @@ const createWMSLayer = (
 };
 
 const updateLayers = () => {
-  if (!L || !map0 || !map1 || !map2 || !map3) return;
+  if (!L || !map0 || !map1 || !map2) return;
 
-  const maps = [map0, map1, map2, map3];
+  const maps = [map0, map1, map2];
 
   // Remove existing WMS layers
   wmsLayers.forEach((layer, idx) => {
@@ -713,7 +606,7 @@ const updateLayers = () => {
   const isAggregate = aggregateView.value;
   // Cover the maps up front: the new tiles are requested below, and the layers
   // only clear their own flag once every tile has come back.
-  mapsLoading.value = [true, true, true, true];
+  mapsLoading.value = [true, true, true];
   // First map always shows mean for model 21, scenario 3, season 1, position 1
   wmsLayers = [
     createWMSLayer("mean_range", false, 0, {
@@ -721,7 +614,7 @@ const updateLayers = () => {
       season: "1",
       position: "2",
     }),
-    ...["mean", "delta_abs", "delta_pct"].map((style, idx) =>
+    ...["delta_abs", "delta_pct"].map((style, idx) =>
       createWMSLayer(style, isAggregate, idx + 1),
     ),
   ];
@@ -747,8 +640,7 @@ const handleMapClick = async (e: any) => {
   markers.set(e.target, L.marker([lat, lng]).addTo(e.target));
 
   // Determine variable based on clicked map
-  const wcsVariable =
-    e.target === map1 ? "mean" : e.target === map2 ? "delta_abs" : "delta_pct";
+  const wcsVariable = e.target === map1 ? "delta_abs" : "delta_pct";
 
   // Store location for chart refresh
   lastClickedLat.value = lat;
@@ -829,7 +721,7 @@ const fetchDataAndCreateChart = async (
       idx === selectedScenarioIdx ? `<b>${label}</b>` : label,
     );
 
-    const titleText = `${VARIABLE_NAMES_AGGREGATE[wcsVariable]} (${lat.toFixed(2)}°, ${lng.toFixed(2)}°)<br />Era: ${ERA_NAMES[position]}, Season: ${SEASON_NAMES[season]}`;
+    const titleText = `${VARIABLE_NAMES_AGGREGATE[wcsVariable]} (${lat.toFixed(2)}°, ${lng.toFixed(2)}°)<br />Horizon: ${HORIZON_NAMES[position]}, Season: ${SEASON_NAMES[season]}`;
 
     const layout = {
       title: { text: titleText, font: { size: 16 } },
@@ -896,7 +788,7 @@ const fetchDataAndCreateChart = async (
     };
 
     const modelName = MODEL_NAMES[parseInt(selectedModel.value)];
-    const titleText = `${VARIABLE_NAMES_SINGLE[wcsVariable]} (${lat.toFixed(2)}°, ${lng.toFixed(2)}°)<br />Model: ${modelName}, Era: ${ERA_NAMES[position]}, Season: ${SEASON_NAMES[season]}`;
+    const titleText = `${VARIABLE_NAMES_SINGLE[wcsVariable]} (${lat.toFixed(2)}°, ${lng.toFixed(2)}°)<br />Model: ${modelName}, Horizon: ${HORIZON_NAMES[position]}, Season: ${SEASON_NAMES[season]}`;
 
     const layout = {
       title: { text: titleText, font: { size: 16 } },
@@ -960,13 +852,8 @@ onMounted(async () => {
     };
 
     // Initialize maps
-    const mapContainers = [
-      mapContainer0,
-      mapContainer1,
-      mapContainer2,
-      mapContainer3,
-    ];
-    const maps = [null, null, null, null];
+    const mapContainers = [mapContainer0, mapContainer1, mapContainer2];
+    const maps = [null, null, null];
 
     mapContainers.forEach((container, idx) => {
       if (container.value) {
@@ -996,7 +883,7 @@ onMounted(async () => {
         maps[idx] = map;
       }
     });
-    [map0, map1, map2, map3] = maps;
+    [map0, map1, map2] = maps;
 
     // Initialize layers after maps are ready
     setTimeout(() => {
