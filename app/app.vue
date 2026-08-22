@@ -81,7 +81,54 @@
       </div>
       <div class="spread-controls-panel">
         <div class="controls">
-          <!-- Scenario, horizon and season pickers -->
+          <div class="field">
+            <label class="label" for="spread-scenario">Scenario</label>
+            <div class="control">
+              <div class="select">
+                <select id="spread-scenario" v-model="spreadScenario">
+                  <option
+                    v-for="option in SCENARIO_OPTIONS"
+                    :key="option.value"
+                    :value="option.value"
+                  >
+                    {{ option.label }}
+                  </option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label class="label" for="spread-position">Horizon</label>
+            <div class="control">
+              <div class="select">
+                <select id="spread-position" v-model="spreadPosition">
+                  <option
+                    v-for="option in HORIZON_OPTIONS"
+                    :key="option.value"
+                    :value="option.value"
+                  >
+                    {{ option.label }}
+                  </option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label class="label" for="spread-season">Season</label>
+            <div class="control">
+              <div class="select">
+                <select id="spread-season" v-model="spreadSeason">
+                  <option
+                    v-for="option in SEASON_OPTIONS"
+                    :key="option.value"
+                    :value="option.value"
+                  >
+                    {{ option.label }}
+                  </option>
+                </select>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="container spread-ensemble-panel">
@@ -559,11 +606,6 @@ const RANGE_COLOR_TABLES: Record<string, Record<string, number[]>> = {
   },
 };
 
-// Hard-coded until this section gets its own controls
-const SPREAD_SCENARIO = "3";
-const SPREAD_POSITION = "2";
-const SPREAD_SEASON = "1";
-
 const VARIABLE_NAMES_SINGLE: Record<string, string> = {
   mean: "Mean Precipitation",
   delta_abs: "Absolute Change from Historical Precipitation",
@@ -592,6 +634,23 @@ const SEASON_NAMES: Record<string, string> = {
   "2": "Wet Season",
 };
 const SCENARIO_NAMES = ["SSP1-2.6", "SSP2-4.5", "SSP3-7.0", "SSP5-8.5"];
+
+// Option lists for the Explore Model Spread controls, derived from the names
+// above so the two stay in step. Season labels are kept short to match the
+// Model outputs control.
+const SCENARIO_OPTIONS = SCENARIO_NAMES.map((label, idx) => ({
+  value: String(idx + 1),
+  label,
+}));
+const HORIZON_OPTIONS = Object.entries(HORIZON_NAMES).map(([value, label]) => ({
+  value,
+  label,
+}));
+const SEASON_OPTIONS = [
+  { value: "0", label: "Annual" },
+  { value: "1", label: "Dry" },
+  { value: "2", label: "Wet" },
+];
 const RASDAMAN_BASE_URL = "https://zeus.snap.uaf.edu/rasdaman/ows";
 // USGS National Map basemap, served from the ArcGIS tile cache (note {y}/{x}
 // order). The cache is Web Mercator, so the maps run in EPSG:3857.
@@ -649,6 +708,9 @@ const spreadContainerRef = spreadContainers.map((_, idx) => (el: any) => {
 let spreadMaps: any[] = [null, null, null, null];
 let spreadLayers: any[] = [null, null, null, null];
 const spreadLoading = ref([true, true, true, true]);
+const spreadScenario = ref("3");
+const spreadPosition = ref("2");
+const spreadSeason = ref("1");
 const lastClickedLat = ref<number | null>(null);
 const lastClickedLng = ref<number | null>(null);
 const lastClickedVariable = ref<string | null>(null);
@@ -667,6 +729,10 @@ watch(aggregateView, () => {
   lastClickedLng.value = null;
   lastClickedVariable.value = null;
   updateLayers();
+});
+
+watch([spreadScenario, spreadPosition, spreadSeason], () => {
+  updateSpreadLayers();
 });
 
 // Watch for changes to model, era, or season and refresh chart
@@ -800,8 +866,8 @@ const ensembleRangeUrl = (variable: string, models: number[]) => {
   const { latMin, latMax, lonMin, lonMax } = COVERAGE_BOUNDS;
   const selected = models.map((m) => `$m=${m}`).join(" or ");
   const slice =
-    `scenario(${SPREAD_SCENARIO}),position(${SPREAD_POSITION}),` +
-    `season(${SPREAD_SEASON}),Lat(${latMin}:${latMax}),Lon(${lonMin}:${lonMax})`;
+    `scenario(${spreadScenario.value}),position(${spreadPosition.value}),` +
+    `season(${spreadSeason.value}),Lat(${latMin}:${latMax}),Lon(${lonMin}:${lonMax})`;
   const colorMap = JSON.stringify({
     colorMap: { type: "intervals", colorTable: RANGE_COLOR_TABLES[variable] },
   }).replace(/"/g, '\\"');
