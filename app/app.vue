@@ -61,12 +61,128 @@
         </div>
       </div>
     </div>
+    <!-- Explore Model Spread: compare the range across all 30 models against
+         the range across a smaller ensemble, side by side. -->
+    <section id="model-spread">
+      <div class="container">
+        <div class="content is-size-5 mt-6">
+          <h3 class="title is-3">Explore Model Spread</h3>
+          <ul>
+            <li>
+              The top row shows the range of variation across all 30 models.
+            </li>
+            <li>
+              The bottom row shows the same range across a smaller ensemble,
+              so the two can be compared directly.
+            </li>
+            <li>Darker colors show less model agreement.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="spread-controls-panel">
+        <div class="controls">
+          <!-- Scenario, horizon and season pickers -->
+        </div>
+      </div>
+      <div class="container spread-ensemble-panel">
+        <!-- Ensemble picker: high-performing preset, or a custom model list -->
+      </div>
+      <div class="spread-maps">
+        <h4 class="spread-row-title">All 30 models</h4>
+        <div class="spread-map-row">
+          <div class="map-panel">
+            <h3>Delta From Historical, Model Range (&Delta;<sup>2</sup> mm/day)</h3>
+            <div class="map spread-map" :ref="spreadContainerRef[0]">
+              <MapLoadingOverlay :loading="spreadLoading[0]" />
+              <div class="legend">
+                <div
+                  class="legend-item"
+                  v-for="item in RANGE_LEGENDS.delta_abs"
+                  :key="item.label"
+                >
+                  <div
+                    class="legend-swatch"
+                    :style="{ backgroundColor: item.color }"
+                  ></div>
+                  <span class="legend-value">{{ item.label }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="map-panel">
+            <h3>Delta From Historical, Model Range (&Delta;%)</h3>
+            <div class="map spread-map" :ref="spreadContainerRef[1]">
+              <MapLoadingOverlay :loading="spreadLoading[1]" />
+              <div class="legend">
+                <div
+                  class="legend-item"
+                  v-for="item in RANGE_LEGENDS.delta_pct"
+                  :key="item.label"
+                >
+                  <div
+                    class="legend-swatch"
+                    :style="{ backgroundColor: item.color }"
+                  ></div>
+                  <span class="legend-value">{{ item.label }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <h4 class="spread-row-title">
+          Hand-selected ensemble &mdash; {{ HIGH_PERFORMING_MODELS.length }}
+          high-performing models
+        </h4>
+        <div class="spread-map-row">
+          <div class="map-panel">
+            <div class="map spread-map" :ref="spreadContainerRef[2]">
+              <MapLoadingOverlay :loading="spreadLoading[2]" />
+              <div class="legend">
+                <div
+                  class="legend-item"
+                  v-for="item in RANGE_LEGENDS.delta_abs"
+                  :key="item.label"
+                >
+                  <div
+                    class="legend-swatch"
+                    :style="{ backgroundColor: item.color }"
+                  ></div>
+                  <span class="legend-value">{{ item.label }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="map-panel">
+            <div class="map spread-map" :ref="spreadContainerRef[3]">
+              <MapLoadingOverlay :loading="spreadLoading[3]" />
+              <div class="legend">
+                <div
+                  class="legend-item"
+                  v-for="item in RANGE_LEGENDS.delta_pct"
+                  :key="item.label"
+                >
+                  <div
+                    class="legend-swatch"
+                    :style="{ backgroundColor: item.color }"
+                  ></div>
+                  <span class="legend-value">{{ item.label }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="spread-chart-container">
+        <!-- Chart for the last clicked location -->
+      </div>
+    </section>
     <div class="container">
       <div class="content is-size-5 mt-6">
-        <h3 class="title is-3">Model outputs &amp; variability</h3>
+        <h3 class="title is-3">Model outputs</h3>
         <ul>
           <li>
-            Pick a model, scenario, horizon and season to change the maps below.
+            Pick a model, scenario, horizon and season to show data for any
+            combination on the maps below.
           </li>
           <li>Clicking on land will load charts of data values.</li>
         </ul>
@@ -386,6 +502,68 @@ const MODEL_NAMES = [
   "UKESM1-0-LL",
 ];
 
+// Hand-selected ensemble: the models that perform best over this region.
+const HIGH_PERFORMING_MODELS = [
+  "FGOALS-g3",
+  "GFDL-CM4",
+  "GFDL-ESM4",
+  "CNRM-ESM2-1",
+  "EC-Earth3",
+  "KIOST-ESM",
+  "IPSL-CM6A-LR",
+  "CNRM-CM6-1",
+];
+const HIGH_PERFORMING_MODEL_INDICES = HIGH_PERFORMING_MODELS.map((name) =>
+  MODEL_NAMES.indexOf(name),
+);
+const ALL_MODEL_INDICES = MODEL_NAMES.map((_, idx) => idx);
+
+// Grays shared by every model-range map, matching the server-side *_range styles
+const RANGE_GRAYS = [
+  "rgba(247, 247, 247, 1)",
+  "rgba(204, 204, 204, 1)",
+  "rgba(150, 150, 150, 1)",
+  "rgba(99, 99, 99, 1)",
+  "rgba(37, 37, 37, 1)",
+];
+
+const RANGE_LEGENDS: Record<string, { color: string; label: string }[]> = {
+  delta_abs: ["\u2265 0, < 1", "\u2265 1, < 2", "\u2265 2, < 3", "\u2265 3, < 4", "\u2265 4"].map(
+    (label, idx) => ({ color: RANGE_GRAYS[idx]!, label }),
+  ),
+  delta_pct: [
+    "\u2265 0, < 15",
+    "\u2265 15, < 30",
+    "\u2265 30, < 45",
+    "\u2265 45, < 60",
+    "\u2265 60",
+  ].map((label, idx) => ({ color: RANGE_GRAYS[idx]!, label })),
+};
+
+// Break points of the *_range styles, reused when a range is computed
+// client-side over a subset of models.
+const RANGE_COLOR_TABLES: Record<string, Record<string, number[]>> = {
+  delta_abs: {
+    "0": [247, 247, 247, 255],
+    "1": [204, 204, 204, 255],
+    "2": [150, 150, 150, 255],
+    "3": [99, 99, 99, 255],
+    "4": [37, 37, 37, 255],
+  },
+  delta_pct: {
+    "0": [247, 247, 247, 255],
+    "15": [204, 204, 204, 255],
+    "30": [150, 150, 150, 255],
+    "45": [99, 99, 99, 255],
+    "60": [37, 37, 37, 255],
+  },
+};
+
+// Hard-coded until this section gets its own controls
+const SPREAD_SCENARIO = "3";
+const SPREAD_POSITION = "2";
+const SPREAD_SEASON = "1";
+
 const VARIABLE_NAMES_SINGLE: Record<string, string> = {
   mean: "Mean Precipitation",
   delta_abs: "Absolute Change from Historical Precipitation",
@@ -420,6 +598,19 @@ const RASDAMAN_BASE_URL = "https://zeus.snap.uaf.edu/rasdaman/ows";
 const USGS_BASEMAP_URL =
   "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}";
 const WCS_BASE_URL = `${RASDAMAN_BASE_URL}?&SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=piak_collab`;
+const WCPS_BASE_URL = `${RASDAMAN_BASE_URL}?service=WCS&version=2.0.1&request=ProcessCoverages`;
+// Full geographic extent of the coverage, from its WCS description
+const COVERAGE_BOUNDS = {
+  latMin: 18.849,
+  latMax: 22.269,
+  lonMin: -159.816,
+  lonMax: -154.668,
+};
+// Pixel grid the range images are rendered at. The native grid is 2288x1520,
+// more than these maps display, so it is scaled down server-side; this is still
+// comfortably above the on-screen size at 2x pixel density.
+const WCPS_IMAGE_HEIGHT = 768;
+const WCPS_IMAGE_WIDTH = 1152;
 // Hawaii land outline, from https://github.com/glynnbird/usstatesgeojson
 const LAND_GEOJSON_URL = "/hawaii.geojson";
 
@@ -448,6 +639,16 @@ const aggregateView = ref(false);
 const isLoading = ref(false);
 // One flag per map, true while that map has WMS requests in flight
 const mapsLoading = ref([true, true, true]);
+// Explore Model Spread: 0/1 are the all-30 maps, 2/3 the ensemble maps
+const spreadContainers: any[] = [null, null, null, null];
+// Stable ref callbacks: an inline arrow would be a new function every render,
+// which makes Vue unset and re-set the entry on each patch.
+const spreadContainerRef = spreadContainers.map((_, idx) => (el: any) => {
+  if (el) spreadContainers[idx] = el;
+});
+let spreadMaps: any[] = [null, null, null, null];
+let spreadLayers: any[] = [null, null, null, null];
+const spreadLoading = ref([true, true, true, true]);
 const lastClickedLat = ref<number | null>(null);
 const lastClickedLng = ref<number | null>(null);
 const lastClickedVariable = ref<string | null>(null);
@@ -591,6 +792,82 @@ const createWMSLayer = (
   });
 
   return layer;
+};
+
+// Range across an arbitrary set of models, computed by the server. The stored
+// *_range WMS styles hardcode model(0:29), so a subset has to go through WCPS.
+const ensembleRangeUrl = (variable: string, models: number[]) => {
+  const { latMin, latMax, lonMin, lonMax } = COVERAGE_BOUNDS;
+  const selected = models.map((m) => `$m=${m}`).join(" or ");
+  const slice =
+    `scenario(${SPREAD_SCENARIO}),position(${SPREAD_POSITION}),` +
+    `season(${SPREAD_SEASON}),Lat(${latMin}:${latMax}),Lon(${lonMin}:${lonMax})`;
+  const colorMap = JSON.stringify({
+    colorMap: { type: "intervals", colorTable: RANGE_COLOR_TABLES[variable] },
+  }).replace(/"/g, '\\"');
+  // scale() has to sit inside the let clause: applied to the condensed result
+  // it is resolved against the source coverage's axes and errors out.
+  const query =
+    `for $c in (piak_collab) ` +
+    `let $s := scale($c.${variable}[${slice}], ` +
+    `{Lat:"CRS:1"(0:${WCPS_IMAGE_HEIGHT - 1}), Lon:"CRS:1"(0:${WCPS_IMAGE_WIDTH - 1})}) ` +
+    `return encode(` +
+    `(condense max over $m model(0:29) where ${selected} using $s[model($m)]) - ` +
+    `(condense min over $m model(0:29) where ${selected} using $s[model($m)])` +
+    `, "image/png", "${colorMap}")`;
+  return `${WCPS_BASE_URL}&query=${encodeURIComponent(query)}`;
+};
+
+// Same overlay wiring as createWMSLayer, against the spread maps' own arrays
+const trackSpreadLoading = (layer: any, index: number) => {
+  const clear = () => {
+    if (spreadLayers[index] === layer) spreadLoading.value[index] = false;
+  };
+  layer.on("loading", () => {
+    if (spreadLayers[index] === layer) spreadLoading.value[index] = true;
+  });
+  layer.on("load", clear);
+  layer.on("error", clear);
+  return layer;
+};
+
+// One image for the whole coverage rather than tiles: WCPS has no tiling, and
+// over this small a latitude span the Mercator stretch is well under a pixel.
+// Both rows go through here, including the all-30 row that the stored *_range
+// WMS styles could also serve, so the two are rendered identically and can be
+// compared without resampling differences between them.
+const createEnsembleRangeLayer = (
+  variable: string,
+  models: number[],
+  index: number,
+) =>
+  trackSpreadLoading(
+    L.imageOverlay(
+      ensembleRangeUrl(variable, models),
+      [
+        [COVERAGE_BOUNDS.latMin, COVERAGE_BOUNDS.lonMin],
+        [COVERAGE_BOUNDS.latMax, COVERAGE_BOUNDS.lonMax],
+      ],
+      { opacity: 0.85 },
+    ),
+    index,
+  );
+
+const updateSpreadLayers = () => {
+  if (!L || spreadMaps.some((map) => !map)) return;
+
+  spreadLayers.forEach((layer, idx) => {
+    if (layer) spreadMaps[idx].removeLayer(layer);
+  });
+
+  spreadLoading.value = [true, true, true, true];
+  spreadLayers = [
+    createEnsembleRangeLayer("delta_abs", ALL_MODEL_INDICES, 0),
+    createEnsembleRangeLayer("delta_pct", ALL_MODEL_INDICES, 1),
+    createEnsembleRangeLayer("delta_abs", HIGH_PERFORMING_MODEL_INDICES, 2),
+    createEnsembleRangeLayer("delta_pct", HIGH_PERFORMING_MODEL_INDICES, 3),
+  ];
+  spreadLayers.forEach((layer, idx) => layer.addTo(spreadMaps[idx]));
 };
 
 const updateLayers = () => {
@@ -822,9 +1099,9 @@ onMounted(async () => {
     // Point to local marker images in public folder
     delete (L.Icon.Default.prototype as any)._getIconUrl;
     L.Icon.Default.mergeOptions({
-      iconRetinaUrl: '/marker-icon-2x.png',
-      iconUrl: '/marker-icon.png',
-      shadowUrl: '/marker-shadow.png',
+      iconRetinaUrl: "/marker-icon-2x.png",
+      iconUrl: "/marker-icon.png",
+      shadowUrl: "/marker-shadow.png",
     });
 
     try {
@@ -885,10 +1162,24 @@ onMounted(async () => {
     });
     [map0, map1, map2] = maps;
 
+    // Explore Model Spread maps: same non-interactive treatment, but sized to
+    // fit the coverage in a two-column row.
+    spreadMaps = spreadContainers.map((container) => {
+      if (!container) return null;
+      const map = L.map(container, {
+        ...mapOptionsBase,
+        zoom: 7.2,
+        center: [20.5, -157.2],
+      });
+      L.tileLayer(USGS_BASEMAP_URL, baseTileOptions).addTo(map);
+      return map;
+    });
+
     // Initialize layers after maps are ready
     setTimeout(() => {
-      maps.forEach((map) => map?.invalidateSize());
+      [...maps, ...spreadMaps].forEach((map) => map?.invalidateSize());
       updateLayers();
+      updateSpreadLayers();
     }, 100);
   } catch (error) {
     console.error("Error initializing maps:", error);
@@ -937,6 +1228,50 @@ onMounted(async () => {
 .controls .switch-field {
   margin-bottom: 0;
   font-weight: bold;
+}
+
+#model-spread {
+  margin-bottom: 60px;
+}
+
+.spread-controls-panel {
+  margin-top: 20px;
+  padding: 20px;
+}
+
+.spread-ensemble-panel {
+  padding: 0 20px;
+}
+
+.spread-maps {
+  padding: 20px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.spread-map-row {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+}
+
+.spread-row-title {
+  margin: 0 0 10px 0;
+  padding: 10px;
+  text-align: center;
+  font-family: Arial, sans-serif;
+  font-weight: bold;
+  font-size: 1.25em;
+}
+
+.spread-map-row + .spread-row-title {
+  margin-top: 30px;
+}
+
+.spread-chart-container {
+  margin: 20px auto;
+  padding: 20px;
+  width: 100%;
 }
 
 .overview-map-wrapper {
@@ -996,6 +1331,12 @@ onMounted(async () => {
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   position: relative;
+}
+
+/* Closer to the shape of the coverage than the Model outputs maps, so the
+   islands fill more of a two-per-row layout. */
+.spread-map {
+  aspect-ratio: 3 / 2;
 }
 
 .legend {
@@ -1067,6 +1408,12 @@ body {
 .leaflet-container .leaflet-marker-icon {
   cursor: pointer;
   pointer-events: auto;
+}
+
+/* Explore Model Spread maps carry no click behavior yet */
+.spread-map .leaflet-container,
+.spread-map.leaflet-container {
+  cursor: default;
 }
 
 /* Overview map pans and zooms, so it keeps the normal Leaflet cursors */
