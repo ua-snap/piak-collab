@@ -132,7 +132,34 @@
         </div>
       </div>
       <div class="container spread-ensemble-panel">
-        <!-- Ensemble picker: high-performing preset, or a custom model list -->
+        <div class="field ensemble-toggle">
+          <div class="control">
+            <label class="switch is-rounded is-info">
+              <input
+                id="custom-ensemble"
+                type="checkbox"
+                v-model="customEnsemble"
+              />
+              <span class="check"></span>
+              <span class="control-label">
+                Custom ensemble &mdash; pick the models yourself
+              </span>
+            </label>
+          </div>
+        </div>
+        <div v-if="customEnsemble" class="model-picker">
+          <label
+            class="checkbox model-picker-item"
+            v-for="(name, idx) in MODEL_NAMES"
+            :key="name"
+          >
+            <input type="checkbox" :value="idx" v-model="customModelIndices" />
+            {{ name }}
+          </label>
+        </div>
+        <p v-if="customEnsemble && !activeEnsemble.length" class="ensemble-empty">
+          Select at least one model to draw the ensemble maps.
+        </p>
       </div>
       <div class="spread-maps">
         <h4 class="spread-row-title">All 30 models</h4>
@@ -176,9 +203,22 @@
             </div>
           </div>
         </div>
+        <p class="spread-ensemble-list">
+          <span v-if="activeEnsemble.length">{{
+            activeEnsembleNames.join(", ")
+          }}</span>
+          <span v-else>No models selected</span>
+        </p>
         <h4 class="spread-row-title">
-          Hand-selected ensemble &mdash; {{ HIGH_PERFORMING_MODELS.length }}
-          high-performing models
+          <template v-if="customEnsemble"
+            >Custom ensemble &mdash; {{ activeEnsemble.length }}
+            {{ activeEnsemble.length === 1 ? "model" : "models" }}</template
+          >
+          <template v-else
+            >Hand-selected ensemble &mdash;
+            {{ HIGH_PERFORMING_MODELS.length }} high-performing
+            models</template
+          >
         </h4>
         <div class="spread-map-row">
           <div class="map-panel">
@@ -511,7 +551,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, watch } from "vue";
+import { ref, computed, onMounted, nextTick, watch } from "vue";
 import "bulma/css/bulma.min.css";
 import "bulma-switch-control/css/main.min.css";
 
@@ -711,6 +751,22 @@ const spreadLoading = ref([true, true, true, true]);
 const spreadScenario = ref("3");
 const spreadPosition = ref("2");
 const spreadSeason = ref("1");
+// Off: the hand-picked high performers. On: whatever is ticked below, which
+// starts from that same set so switching over does not move the map.
+const customEnsemble = ref(false);
+const customModelIndices = ref<number[]>([...HIGH_PERFORMING_MODEL_INDICES]);
+
+const activeEnsemble = computed(() =>
+  [...(customEnsemble.value ? customModelIndices.value : HIGH_PERFORMING_MODEL_INDICES)].sort(
+    (a, b) => a - b,
+  ),
+);
+const activeEnsembleNames = computed(() =>
+  activeEnsemble.value.map((idx) => MODEL_NAMES[idx]),
+);
+// Compared instead of the array itself, so re-ticking back to the same set
+// does not refetch identical images.
+const activeEnsembleKey = computed(() => activeEnsemble.value.join(","));
 const lastClickedLat = ref<number | null>(null);
 const lastClickedLng = ref<number | null>(null);
 const lastClickedVariable = ref<string | null>(null);
@@ -733,6 +789,17 @@ watch(aggregateView, () => {
 
 watch([spreadScenario, spreadPosition, spreadSeason], () => {
   updateSpreadLayers();
+});
+
+// Ticking through a list of 30 checkboxes should not fire a request per tick
+const ENSEMBLE_DEBOUNCE_MS = 200;
+let ensembleTimer: ReturnType<typeof setTimeout> | null = null;
+watch(activeEnsembleKey, () => {
+  if (ensembleTimer) clearTimeout(ensembleTimer);
+  ensembleTimer = setTimeout(() => {
+    ensembleTimer = null;
+    updateSpreadLayers(ENSEMBLE_MAP_INDICES);
+  }, ENSEMBLE_DEBOUNCE_MS);
 });
 
 // Watch for changes to model, era, or season and refresh chart
@@ -919,21 +986,41 @@ const createEnsembleRangeLayer = (
     index,
   );
 
-const updateSpreadLayers = () => {
+// Which models and which variable each of the four maps draws. Indices 0/1 are
+// the all-30 row, 2/3 the ensemble row.
+const SPREAD_MAP_SPECS: { variable: string; models: () => number[] }[] = [
+  { variable: "delta_abs", models: () => ALL_MODEL_INDICES },
+  { variable: "delta_pct", models: () => ALL_MODEL_INDICES },
+  { variable: "delta_abs", models: () => activeEnsemble.value },
+  { variable: "delta_pct", models: () => activeEnsemble.value },
+];
+const ENSEMBLE_MAP_INDICES = [2, 3];
+const ALL_SPREAD_MAP_INDICES = [0, 1, 2, 3];
+
+// Only the maps named in `indices` are redrawn: an ensemble change leaves the
+// all-30 row alone rather than refetching two images that cannot have changed.
+const updateSpreadLayers = (indices: number[] = ALL_SPREAD_MAP_INDICES) => {
   if (!L || spreadMaps.some((map) => !map)) return;
 
-  spreadLayers.forEach((layer, idx) => {
-    if (layer) spreadMaps[idx].removeLayer(layer);
-  });
+  indices.forEach((idx) => {
+    const existing = spreadLayers[idx];
+    if (existing) spreadMaps[idx].removeLayer(existing);
 
-  spreadLoading.value = [true, true, true, true];
-  spreadLayers = [
-    createEnsembleRangeLayer("delta_abs", ALL_MODEL_INDICES, 0),
-    createEnsembleRangeLayer("delta_pct", ALL_MODEL_INDICES, 1),
-    createEnsembleRangeLayer("delta_abs", HIGH_PERFORMING_MODEL_INDICES, 2),
-    createEnsembleRangeLayer("delta_pct", HIGH_PERFORMING_MODEL_INDICES, 3),
-  ];
-  spreadLayers.forEach((layer, idx) => layer.addTo(spreadMaps[idx]));
+    const spec = SPREAD_MAP_SPECS[idx]!;
+    const models = spec.models();
+    // A range needs something to range over, and an empty `where` clause is
+    // not a valid query. Leave the map bare and let the picker explain why.
+    if (!models.length) {
+      spreadLayers[idx] = null;
+      spreadLoading.value[idx] = false;
+      return;
+    }
+
+    spreadLoading.value[idx] = true;
+    const layer = createEnsembleRangeLayer(spec.variable, models, idx);
+    spreadLayers[idx] = layer;
+    layer.addTo(spreadMaps[idx]);
+  });
 };
 
 const updateLayers = () => {
@@ -1307,6 +1394,44 @@ onMounted(async () => {
 
 .spread-ensemble-panel {
   padding: 0 20px;
+}
+
+.ensemble-toggle {
+  display: flex;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.model-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 6px 20px;
+  margin-top: 1rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid #dbdbdb;
+  border-radius: 4px;
+  background-color: #fafafa;
+}
+
+.model-picker-item input {
+  margin-right: 6px;
+}
+
+.ensemble-empty {
+  margin-top: 0.75rem;
+  text-align: center;
+  font-weight: bold;
+  color: #b03a2e;
+}
+
+.spread-ensemble-list {
+  margin: 0 auto;
+  padding: 0 20px;
+  max-width: 70em;
+  text-align: center;
+  font-size: 0.95em;
+  line-height: 1.5;
+  color: #555;
 }
 
 .spread-maps {
