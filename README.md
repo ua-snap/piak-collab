@@ -28,8 +28,7 @@ Everything else is npm: Nuxt, Vue, Leaflet, Plotly, Bulma.
 - Cut cold-load time. Every request goes to one host, so the browser's
   per-host connection cap leaves the WCPS images queued behind the Model
   outputs tiles.
-- Debounce the scenario / horizon / season controls, and cancel superseded
-  image requests.
+- Cancel superseded image requests.
 - Size the WCPS render grid to the map rather than a fixed 1152x768.
 - De-duplicate the legend markup; rows that share a scale could share a legend.
 - Remove `aggregateView` and the aggregate chart branch, or restore a control

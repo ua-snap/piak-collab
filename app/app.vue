@@ -72,8 +72,8 @@
               The top row shows the range of variation across all 30 models.
             </li>
             <li>
-              The bottom row shows the same range across a smaller ensemble,
-              so the two can be compared directly.
+              The bottom row shows the same range across a smaller ensemble, so
+              the two can be compared directly.
             </li>
             <li>Darker colors show less model agreement.</li>
           </ul>
@@ -157,7 +157,10 @@
             {{ name }}
           </label>
         </div>
-        <p v-if="customEnsemble && !activeEnsemble.length" class="ensemble-empty">
+        <p
+          v-if="customEnsemble && !activeEnsemble.length"
+          class="ensemble-empty"
+        >
           Select at least one model to draw the ensemble maps.
         </p>
       </div>
@@ -165,7 +168,9 @@
         <h4 class="spread-row-title">All 30 models</h4>
         <div class="spread-map-row">
           <div class="map-panel">
-            <h3>Delta From Historical, Model Range (&Delta;<sup>2</sup> mm/day)</h3>
+            <h3>
+              Delta From Historical, Model Range (&Delta;<sup>2</sup> mm/day)
+            </h3>
             <div class="map spread-map" :ref="spreadContainerRef[0]">
               <MapLoadingOverlay :loading="spreadLoading[0]" />
               <div class="legend">
@@ -203,7 +208,18 @@
             </div>
           </div>
         </div>
-        <p class="spread-ensemble-list">
+
+        <h3 class="spread-row-title">
+          <template v-if="customEnsemble"
+            >Custom ensemble &mdash; {{ activeEnsemble.length }}
+            {{ activeEnsemble.length === 1 ? "model" : "models" }}</template
+          >
+          <template v-else
+            >Hand-selected ensemble &mdash;
+            {{ HIGH_PERFORMING_MODELS.length }} high-performing models</template
+          >
+        </h3>
+        <p class="spread-ensemble-list my-3">
           <span
             v-for="(name, idx) in MODEL_NAMES"
             :key="name"
@@ -212,17 +228,6 @@
             >{{ name }}</span
           >
         </p>
-        <h4 class="spread-row-title">
-          <template v-if="customEnsemble"
-            >Custom ensemble &mdash; {{ activeEnsemble.length }}
-            {{ activeEnsemble.length === 1 ? "model" : "models" }}</template
-          >
-          <template v-else
-            >Hand-selected ensemble &mdash;
-            {{ HIGH_PERFORMING_MODELS.length }} high-performing
-            models</template
-          >
-        </h4>
         <div class="spread-map-row">
           <div class="map-panel">
             <div class="map spread-map" :ref="spreadContainerRef[2]">
@@ -272,7 +277,11 @@
         <p v-if="!spreadClick" class="spread-chart-hint">
           Click anywhere on land to chart the spread at that point.
         </p>
-        <div v-show="spreadClick" ref="spreadChartContainer" class="spread-chart"></div>
+        <div
+          v-show="spreadClick"
+          ref="spreadChartContainer"
+          class="spread-chart"
+        ></div>
       </div>
     </section>
     <div class="container">
@@ -627,9 +636,13 @@ const RANGE_GRAYS = [
 ];
 
 const RANGE_LEGENDS: Record<string, { color: string; label: string }[]> = {
-  delta_abs: ["\u2265 0, < 1", "\u2265 1, < 2", "\u2265 2, < 3", "\u2265 3, < 4", "\u2265 4"].map(
-    (label, idx) => ({ color: RANGE_GRAYS[idx]!, label }),
-  ),
+  delta_abs: [
+    "\u2265 0, < 1",
+    "\u2265 1, < 2",
+    "\u2265 2, < 3",
+    "\u2265 3, < 4",
+    "\u2265 4",
+  ].map((label, idx) => ({ color: RANGE_GRAYS[idx]!, label })),
   delta_pct: [
     "\u2265 0, < 15",
     "\u2265 15, < 30",
@@ -769,9 +782,11 @@ const customEnsemble = ref(false);
 const customModelIndices = ref<number[]>([...HIGH_PERFORMING_MODEL_INDICES]);
 
 const activeEnsemble = computed(() =>
-  [...(customEnsemble.value ? customModelIndices.value : HIGH_PERFORMING_MODEL_INDICES)].sort(
-    (a, b) => a - b,
-  ),
+  [
+    ...(customEnsemble.value
+      ? customModelIndices.value
+      : HIGH_PERFORMING_MODEL_INDICES),
+  ].sort((a, b) => a - b),
 );
 // Compared instead of the array itself, so re-ticking back to the same set
 // does not refetch identical images.
@@ -811,30 +826,48 @@ watch(aggregateView, () => {
   updateLayers();
 });
 
-watch([spreadScenario, spreadPosition, spreadSeason], () => {
-  updateSpreadLayers();
-});
+// Every spread control funnels through here, so working through the model
+// checklist or flipping between scenarios collapses into one round of
+// requests instead of firing on each change. Work accumulates across the
+// wait: whichever maps any pending change touched are redrawn together.
+const SPREAD_DEBOUNCE_MS = 200;
+let spreadRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingSpreadMaps = new Set<number>();
+let pendingChartReload = false;
 
-// Scenario is the chart's x-axis, so changing it only re-marks the selected
-// tick. Horizon and season change the underlying values, so they refetch.
-watch(spreadScenario, () => {
-  if (spreadClick.value) renderSpreadChart();
+const scheduleSpreadRefresh = (
+  mapIndices: number[],
+  { reloadChart = false } = {},
+) => {
+  mapIndices.forEach((index) => pendingSpreadMaps.add(index));
+  pendingChartReload = pendingChartReload || reloadChart;
+
+  if (spreadRefreshTimer) clearTimeout(spreadRefreshTimer);
+  spreadRefreshTimer = setTimeout(() => {
+    spreadRefreshTimer = null;
+    const indices = [...pendingSpreadMaps].sort((a, b) => a - b);
+    const reloadChartData = pendingChartReload;
+    pendingSpreadMaps = new Set();
+    pendingChartReload = false;
+
+    if (indices.length) updateSpreadLayers(indices);
+    if (!spreadClick.value) return;
+    // Horizon and season change the values behind the chart. Scenario only
+    // re-marks the selected tick, and the ensemble group is a subset of data
+    // already in hand, so both of those redraw without refetching.
+    if (reloadChartData) loadSpreadChart();
+    else renderSpreadChart();
+  }, SPREAD_DEBOUNCE_MS);
+};
+
+watch([spreadScenario, spreadPosition, spreadSeason], () => {
+  scheduleSpreadRefresh(ALL_SPREAD_MAP_INDICES);
 });
 watch([spreadPosition, spreadSeason], () => {
-  if (spreadClick.value) loadSpreadChart();
+  scheduleSpreadRefresh([], { reloadChart: true });
 });
-
-// Ticking through a list of 30 checkboxes should not fire a request per tick
-const ENSEMBLE_DEBOUNCE_MS = 200;
-let ensembleTimer: ReturnType<typeof setTimeout> | null = null;
 watch(activeEnsembleKey, () => {
-  if (ensembleTimer) clearTimeout(ensembleTimer);
-  ensembleTimer = setTimeout(() => {
-    ensembleTimer = null;
-    updateSpreadLayers(ENSEMBLE_MAP_INDICES);
-    // The chart's other group is a subset of data already in hand
-    if (spreadClick.value) renderSpreadChart();
-  }, ENSEMBLE_DEBOUNCE_MS);
+  scheduleSpreadRefresh(ENSEMBLE_MAP_INDICES);
 });
 
 // Watch for changes to model, era, or season and refresh chart
