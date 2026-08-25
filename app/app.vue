@@ -204,10 +204,13 @@
           </div>
         </div>
         <p class="spread-ensemble-list">
-          <span v-if="activeEnsemble.length">{{
-            activeEnsembleNames.join(", ")
-          }}</span>
-          <span v-else>No models selected</span>
+          <span
+            v-for="(name, idx) in MODEL_NAMES"
+            :key="name"
+            class="ensemble-model"
+            :class="{ 'is-included': activeEnsemble.includes(idx) }"
+            >{{ name }}</span
+          >
         </p>
         <h4 class="spread-row-title">
           <template v-if="customEnsemble"
@@ -760,9 +763,6 @@ const activeEnsemble = computed(() =>
   [...(customEnsemble.value ? customModelIndices.value : HIGH_PERFORMING_MODEL_INDICES)].sort(
     (a, b) => a - b,
   ),
-);
-const activeEnsembleNames = computed(() =>
-  activeEnsemble.value.map((idx) => MODEL_NAMES[idx]),
 );
 // Compared instead of the array itself, so re-ticking back to the same set
 // does not refetch identical images.
@@ -1424,14 +1424,33 @@ onMounted(async () => {
   color: #b03a2e;
 }
 
+/* Every model is listed, so the ensemble reads as a selection out of the
+   full set rather than a list with no denominator. */
 .spread-ensemble-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px;
   margin: 0 auto;
   padding: 0 20px;
-  max-width: 70em;
-  text-align: center;
-  font-size: 0.95em;
-  line-height: 1.5;
-  color: #555;
+  max-width: 75em;
+}
+
+.ensemble-model {
+  padding: 2px 8px;
+  border: 1px solid #dbdbdb;
+  border-radius: 3px;
+  background-color: #f5f5f5;
+  color: #999;
+  font-size: 0.8em;
+  line-height: 1.6;
+}
+
+.ensemble-model.is-included {
+  border-color: #2c3e50;
+  background-color: #2c3e50;
+  color: #fff;
+  font-weight: bold;
 }
 
 .spread-maps {
