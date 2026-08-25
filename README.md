@@ -25,8 +25,6 @@ Everything else is npm: Nuxt, Vue, Leaflet, Plotly, Bulma.
 
 ## Further work
 
-- Build the chart for the Explore Model Spread section; its maps are not
-  clickable and carry no land mask.
 - Cut cold-load time. Every request goes to one host, so the browser's
   per-host connection cap leaves the WCPS images queued behind the Model
   outputs tiles.
@@ -36,4 +34,10 @@ Everything else is npm: Nuxt, Vue, Leaflet, Plotly, Bulma.
 - De-duplicate the legend markup; rows that share a scale could share a legend.
 - Remove `aggregateView` and the aggregate chart branch, or restore a control
   that reaches them.
+- Surface how many models are behind each box in the spread chart. Some
+  model/scenario combinations have no data at a given point, so a box can hold
+  fewer points than its group size implies.
+- Clicks landing exactly on a coastline are ignored: the rendered land mask
+  extends slightly past the polygon the click is tested against. Affects both
+  map sections.
 - Test below desktop widths.

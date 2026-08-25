@@ -263,7 +263,16 @@
         </div>
       </div>
       <div class="spread-chart-container">
-        <!-- Chart for the last clicked location -->
+        <div v-show="spreadChartLoading" class="content is-size-5">
+          <section class="section">
+            <p>Loading chart data&hellip;</p>
+            <progress class="progress is-info" />
+          </section>
+        </div>
+        <p v-if="!spreadClick" class="spread-chart-hint">
+          Click anywhere on land to chart the spread at that point.
+        </p>
+        <div v-show="spreadClick" ref="spreadChartContainer" class="spread-chart"></div>
       </div>
     </section>
     <div class="container">
@@ -767,6 +776,21 @@ const activeEnsemble = computed(() =>
 // Compared instead of the array itself, so re-ticking back to the same set
 // does not refetch identical images.
 const activeEnsembleKey = computed(() => activeEnsemble.value.join(","));
+
+const spreadChartContainer = ref<HTMLElement | null>(null);
+const spreadChartLoading = ref(false);
+const spreadClick = ref<{
+  lat: number;
+  lng: number;
+  variable: string;
+} | null>(null);
+// Values at the clicked point, indexed [model][scenario]. Scenario 0 is
+// historical; the four SSPs are 1-4. Held so that changing the ensemble
+// redraws from the same data instead of refetching it.
+let spreadModelValues: (number | null)[][] = [];
+// Guards against an earlier click's response landing after a later one
+let spreadChartRequest = 0;
+const spreadMarkers = new Map<any, any>();
 const lastClickedLat = ref<number | null>(null);
 const lastClickedLng = ref<number | null>(null);
 const lastClickedVariable = ref<string | null>(null);
@@ -791,6 +815,15 @@ watch([spreadScenario, spreadPosition, spreadSeason], () => {
   updateSpreadLayers();
 });
 
+// Scenario is the chart's x-axis, so changing it only re-marks the selected
+// tick. Horizon and season change the underlying values, so they refetch.
+watch(spreadScenario, () => {
+  if (spreadClick.value) renderSpreadChart();
+});
+watch([spreadPosition, spreadSeason], () => {
+  if (spreadClick.value) loadSpreadChart();
+});
+
 // Ticking through a list of 30 checkboxes should not fire a request per tick
 const ENSEMBLE_DEBOUNCE_MS = 200;
 let ensembleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -799,6 +832,8 @@ watch(activeEnsembleKey, () => {
   ensembleTimer = setTimeout(() => {
     ensembleTimer = null;
     updateSpreadLayers(ENSEMBLE_MAP_INDICES);
+    // The chart's other group is a subset of data already in hand
+    if (spreadClick.value) renderSpreadChart();
   }, ENSEMBLE_DEBOUNCE_MS);
 });
 
@@ -985,6 +1020,150 @@ const createEnsembleRangeLayer = (
     ),
     index,
   );
+
+const SPREAD_GROUP_COLORS = { all: "#7f7f7f", ensemble: "#8c3ac9" };
+
+// One box per scenario per group, with every model drawn as a point beside it
+const spreadBoxTrace = (name: string, models: number[], color: string) => {
+  const x: string[] = [];
+  const y: number[] = [];
+  const text: string[] = [];
+
+  SCENARIO_NAMES.forEach((scenario, scenarioIdx) => {
+    models.forEach((model) => {
+      // Scenario 0 is historical, so the SSPs start one along
+      const value = spreadModelValues[model]?.[scenarioIdx + 1];
+      if (value === null || value === undefined || value <= -9998) return;
+      x.push(scenario);
+      y.push(value);
+      text.push(MODEL_NAMES[model]!);
+    });
+  });
+
+  return {
+    type: "box",
+    name,
+    x,
+    y,
+    text,
+    marker: { color, size: 5, opacity: 0.7 },
+    line: { color },
+    fillcolor: "rgba(0, 0, 0, 0)",
+    boxpoints: "all",
+    jitter: 0.5,
+    pointpos: 0,
+    hoveron: "boxes+points",
+    hovertemplate: `%{text}<br>%{y:.2f}<extra>${name}</extra>`,
+  };
+};
+
+const renderSpreadChart = () => {
+  const click = spreadClick.value;
+  if (!click || !Plotly || !spreadChartContainer.value) return;
+
+  const ensembleLabel = customEnsemble.value
+    ? `Custom ensemble (${activeEnsemble.value.length})`
+    : `High-performing (${activeEnsemble.value.length})`;
+
+  const traces = [
+    spreadBoxTrace("All 30 models", ALL_MODEL_INDICES, SPREAD_GROUP_COLORS.all),
+  ];
+  if (activeEnsemble.value.length) {
+    traces.push(
+      spreadBoxTrace(
+        ensembleLabel,
+        activeEnsemble.value,
+        SPREAD_GROUP_COLORS.ensemble,
+      ),
+    );
+  }
+
+  const selectedScenarioIdx = parseInt(spreadScenario.value) - 1;
+  const tickText = SCENARIO_NAMES.map((label, idx) =>
+    idx === selectedScenarioIdx ? `<b>${label}</b>` : label,
+  );
+
+  const titleText =
+    `${VARIABLE_NAMES_AGGREGATE[click.variable]} ` +
+    `(${click.lat.toFixed(2)}°, ${click.lng.toFixed(2)}°)<br />` +
+    `Horizon: ${HORIZON_NAMES[spreadPosition.value]}, ` +
+    `Season: ${SEASON_NAMES[spreadSeason.value]}`;
+
+  const layout = {
+    title: { text: titleText, font: { size: 16 } },
+    boxmode: "group",
+    xaxis: {
+      title: { text: "Scenario" },
+      tickvals: SCENARIO_NAMES,
+      ticktext: tickText,
+      automargin: true,
+    },
+    yaxis: {
+      title: { text: Y_AXIS_TITLES[click.variable] },
+      automargin: true,
+    },
+    margin: { t: 100, b: 80, l: 80, r: 30 },
+    showlegend: true,
+    legend: { orientation: "h", x: 0.5, xanchor: "center", y: -0.2 },
+  };
+
+  Plotly.newPlot(spreadChartContainer.value, traces, layout, {
+    responsive: true,
+    displayModeBar: false,
+    displaylogo: false,
+  });
+  setTimeout(() => window.dispatchEvent(new Event("resize")), 0);
+};
+
+// One request covers both groups: it returns every model at the clicked point,
+// and the ensemble is a subset of those same values.
+const loadSpreadChart = async () => {
+  const click = spreadClick.value;
+  if (!click || !Plotly) return;
+
+  const request = ++spreadChartRequest;
+  spreadChartLoading.value = true;
+
+  const url =
+    `${WCS_BASE_URL}&SUBSET=Lon(${click.lng})&SUBSET=Lat(${click.lat})` +
+    `&SUBSET=position(${spreadPosition.value})&SUBSET=season(${spreadSeason.value})` +
+    `&RANGESUBSET=${click.variable}&FORMAT=application/json`;
+
+  try {
+    const values = await fetch(url).then((response) => response.json());
+    if (request !== spreadChartRequest) return;
+    spreadModelValues = values;
+    renderSpreadChart();
+  } catch (error) {
+    console.error("Error loading model spread chart:", error);
+  } finally {
+    if (request === spreadChartRequest) spreadChartLoading.value = false;
+  }
+};
+
+const handleSpreadMapClick = async (event: any) => {
+  if (!L || !Plotly) return;
+
+  const { lat, lng } = event.latlng;
+  // Only land has data behind it; ignore clicks in the ocean
+  if (!isOnLand(lat, lng)) return;
+
+  const index = spreadMaps.indexOf(event.target);
+  if (index === -1) return;
+
+  spreadMarkers.forEach((marker, map) => map.removeLayer(marker));
+  spreadMarkers.clear();
+  spreadMarkers.set(event.target, L.marker([lat, lng]).addTo(event.target));
+
+  // Left column charts mm/day, right column percent
+  spreadClick.value = {
+    lat,
+    lng,
+    variable: SPREAD_MAP_SPECS[index]!.variable,
+  };
+
+  await loadSpreadChart();
+};
 
 // Which models and which variable each of the four maps draws. Indices 0/1 are
 // the all-30 row, 2/3 the ensemble row.
@@ -1325,6 +1504,8 @@ onMounted(async () => {
         center: [20.5, -157.2],
       });
       L.tileLayer(USGS_BASEMAP_URL, baseTileOptions).addTo(map);
+      addLandMask(map);
+      map.on("click", handleSpreadMapClick);
       return map;
     });
 
@@ -1478,6 +1659,18 @@ onMounted(async () => {
   margin-top: 30px;
 }
 
+.spread-chart-hint {
+  padding: 20px;
+  text-align: center;
+  font-size: 1.1em;
+  color: #555;
+}
+
+.spread-chart {
+  width: 100%;
+  min-height: 500px;
+}
+
 .spread-chart-container {
   margin: 20px auto;
   padding: 20px;
@@ -1618,12 +1811,6 @@ body {
 .leaflet-container .leaflet-marker-icon {
   cursor: pointer;
   pointer-events: auto;
-}
-
-/* Explore Model Spread maps carry no click behavior yet */
-.spread-map .leaflet-container,
-.spread-map.leaflet-container {
-  cursor: default;
 }
 
 /* Overview map pans and zooms, so it keeps the normal Leaflet cursors */
