@@ -1792,12 +1792,6 @@ onMounted(async () => {
   aspect-ratio: 1.35;
 }
 
-/* Closer to the shape of the coverage than the Model outputs maps, so the
-   islands fill more of a two-per-row layout. */
-.spread-map {
-  aspect-ratio: 3 / 2;
-}
-
 .legend {
   position: absolute;
   bottom: 10px;
