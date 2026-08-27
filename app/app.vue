@@ -132,36 +132,8 @@
         </div>
       </div>
       <div class="container spread-ensemble-panel">
-        <div class="field ensemble-toggle">
-          <div class="control">
-            <label class="switch is-rounded is-info">
-              <input
-                id="custom-ensemble"
-                type="checkbox"
-                v-model="customEnsemble"
-              />
-              <span class="check"></span>
-              <span class="control-label">
-                Custom ensemble &mdash; pick the models yourself
-              </span>
-            </label>
-          </div>
-        </div>
-        <div v-if="customEnsemble" class="model-picker">
-          <label
-            class="checkbox model-picker-item"
-            v-for="(name, idx) in MODEL_NAMES"
-            :key="name"
-          >
-            <input type="checkbox" :value="idx" v-model="customModelIndices" />
-            {{ name }}
-          </label>
-        </div>
-        <p
-          v-if="customEnsemble && !activeEnsemble.length"
-          class="ensemble-empty"
-        >
-          Select at least one model to draw the ensemble maps.
+        <p v-if="!activeEnsemble.length" class="ensemble-empty">
+          Select at least one model below to draw the ensemble maps.
         </p>
       </div>
       <div class="spread-maps">
@@ -169,7 +141,7 @@
         <div class="spread-map-row">
           <div class="map-panel">
             <h3>
-              Delta From Historical, Model Range (&Delta;<sup>2</sup> mm/day)
+              Delta From Historical, Model Spread (&Delta;<sup>2</sup> mm/day)
             </h3>
             <div class="map spread-map" :ref="spreadContainerRef[0]">
               <MapLoadingOverlay :loading="spreadLoading[0]" />
@@ -189,7 +161,7 @@
             </div>
           </div>
           <div class="map-panel">
-            <h3>Delta From Historical, Model Range (&Delta;%)</h3>
+            <h3>Delta From Historical, Model Spread (&Delta;%)</h3>
             <div class="map spread-map" :ref="spreadContainerRef[1]">
               <MapLoadingOverlay :loading="spreadLoading[1]" />
               <div class="legend">
@@ -210,26 +182,32 @@
         </div>
 
         <h3 class="spread-row-title">
-          <template v-if="customEnsemble"
+          <template v-if="isDefaultEnsemble"
+            >Hand-selected ensemble &mdash; {{ activeEnsemble.length }}
+            high-performing models</template
+          >
+          <template v-else
             >Custom ensemble &mdash; {{ activeEnsemble.length }}
             {{ activeEnsemble.length === 1 ? "model" : "models" }}</template
           >
-          <template v-else
-            >Hand-selected ensemble &mdash;
-            {{ HIGH_PERFORMING_MODELS.length }} high-performing models</template
-          >
         </h3>
         <p class="spread-ensemble-list my-3">
-          <span
+          <button
             v-for="(name, idx) in MODEL_NAMES"
             :key="name"
+            type="button"
             class="ensemble-model"
             :class="{ 'is-included': activeEnsemble.includes(idx) }"
-            >{{ name }}</span
+            :aria-pressed="activeEnsemble.includes(idx)"
+            @click="toggleCustomModel(idx)"
+            >{{ name }}</button
           >
         </p>
         <div class="spread-map-row">
           <div class="map-panel">
+            <h3>
+              Delta From Historical, Model Spread (&Delta;<sup>2</sup> mm/day)
+            </h3>
             <div class="map spread-map" :ref="spreadContainerRef[2]">
               <MapLoadingOverlay :loading="spreadLoading[2]" />
               <div class="legend">
@@ -248,6 +226,7 @@
             </div>
           </div>
           <div class="map-panel">
+            <h3>Delta From Historical, Model Spread (&Delta;%)</h3>
             <div class="map spread-map" :ref="spreadContainerRef[3]">
               <MapLoadingOverlay :loading="spreadLoading[3]" />
               <div class="legend">
@@ -275,7 +254,8 @@
           </section>
         </div>
         <p v-if="!spreadClick" class="spread-chart-hint">
-          Click anywhere on land to chart the spread at that point.
+          <img src="/marker-icon.png" alt="" class="chart-hint-icon" />
+          Click on the maps above to chart data values.
         </p>
         <div
           v-show="spreadClick"
@@ -396,7 +376,7 @@
       <div class="map-panel">
         <h3 v-if="!aggregateView">Delta From Historical (&Delta; mm/day)</h3>
         <h3 v-else>
-          Delta From Historical, Model Range (&Delta;<sup>2</sup> mm/day)
+          Delta From Historical, Model Spread (&Delta;<sup>2</sup> mm/day)
         </h3>
         <div class="map" ref="mapContainer1">
           <MapLoadingOverlay :loading="mapsLoading[1]" />
@@ -478,7 +458,7 @@
       </div>
       <div class="map-panel">
         <h3 v-if="!aggregateView">Delta From Historical (%)</h3>
-        <h3 v-else>Delta From Historical, Model Range (&Delta;%)</h3>
+        <h3 v-else>Delta From Historical, Model Spread (&Delta;%)</h3>
         <div class="map" ref="mapContainer2">
           <MapLoadingOverlay :loading="mapsLoading[2]" />
           <div class="legend" v-if="!aggregateView">
@@ -565,7 +545,11 @@
           <progress class="progress is-info" />
         </section>
       </div>
-      <div id="plotly-chart" ref="chartContainer"></div>
+      <p v-if="lastClickedLat === null" class="chart-hint">
+        <img src="/marker-icon.png" alt="" class="chart-hint-icon" />
+        Click on the maps above to chart data values.
+      </p>
+      <div v-show="lastClickedLat !== null" id="plotly-chart" ref="chartContainer"></div>
     </div>
     <Footer />
   </div>
@@ -574,7 +558,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch } from "vue";
 import "bulma/css/bulma.min.css";
-import "bulma-switch-control/css/main.min.css";
 
 // Constants
 const MODEL_NAMES = [
@@ -624,6 +607,10 @@ const HIGH_PERFORMING_MODELS = [
 const HIGH_PERFORMING_MODEL_INDICES = HIGH_PERFORMING_MODELS.map((name) =>
   MODEL_NAMES.indexOf(name),
 );
+// Same format as activeEnsembleKey, so the two can be compared directly
+const DEFAULT_ENSEMBLE_KEY = [...HIGH_PERFORMING_MODEL_INDICES]
+  .sort((a, b) => a - b)
+  .join(",");
 const ALL_MODEL_INDICES = MODEL_NAMES.map((_, idx) => idx);
 
 // Grays shared by every model-range map, matching the server-side *_range styles
@@ -723,12 +710,33 @@ const USGS_BASEMAP_URL =
   "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}";
 const WCS_BASE_URL = `${RASDAMAN_BASE_URL}?&SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=piak_collab`;
 const WCPS_BASE_URL = `${RASDAMAN_BASE_URL}?service=WCS&version=2.0.1&request=ProcessCoverages`;
-// Full geographic extent of the coverage, from its WCS description
+
+// Invisible bounding box encompassing all major Hawaiian islands (Ni'ihau
+// through Hawai'i Island); every map on the page is fit to this same box so
+// they all show the same extent, centered on the same spot.
+const MAP_BOUNDS = {
+  latMin: 18.7,
+  latMax: 22.4,
+  lonMin: -159.97,
+  lonMax: -154.64,
+};
+// The coverage's own geo bounds, from its WCS description. MAP_BOUNDS is
+// wider (so every map frames the same, slightly padded, view), but a WCPS
+// subset outside these bounds fails with an InvalidSubsetting error, which
+// renders as a broken image — so queries and their image overlays are kept
+// clamped to this narrower box instead.
 const COVERAGE_BOUNDS = {
   latMin: 18.849,
   latMax: 22.269,
   lonMin: -159.816,
   lonMax: -154.668,
+};
+// Requested extent intersected with what the coverage actually has data for
+const QUERY_BOUNDS = {
+  latMin: Math.max(MAP_BOUNDS.latMin, COVERAGE_BOUNDS.latMin),
+  latMax: Math.min(MAP_BOUNDS.latMax, COVERAGE_BOUNDS.latMax),
+  lonMin: Math.max(MAP_BOUNDS.lonMin, COVERAGE_BOUNDS.lonMin),
+  lonMax: Math.min(MAP_BOUNDS.lonMax, COVERAGE_BOUNDS.lonMax),
 };
 // Pixel grid the range images are rendered at. The native grid is 2288x1520,
 // more than these maps display, so it is scaled down server-side; this is still
@@ -737,6 +745,11 @@ const WCPS_IMAGE_HEIGHT = 768;
 const WCPS_IMAGE_WIDTH = 1152;
 // Hawaii land outline, from https://github.com/glynnbird/usstatesgeojson
 const LAND_GEOJSON_URL = "/hawaii.geojson";
+
+const BBOX: [[number, number], [number, number]] = [
+  [MAP_BOUNDS.latMin, MAP_BOUNDS.lonMin],
+  [MAP_BOUNDS.latMax, MAP_BOUNDS.lonMax],
+];
 
 // Refs
 const mapContainer0 = ref<HTMLElement | null>(null);
@@ -776,19 +789,24 @@ const spreadLoading = ref([true, true, true, true]);
 const spreadScenario = ref("3");
 const spreadPosition = ref("2");
 const spreadSeason = ref("1");
-// Off: the hand-picked high performers. On: whatever is ticked below, which
-// starts from that same set so switching over does not move the map.
-const customEnsemble = ref(false);
+// Model tags double as toggles: clicking one adds/removes it from the
+// ensemble maps and chart, starting from the hand-picked high performers.
 const customModelIndices = ref<number[]>([...HIGH_PERFORMING_MODEL_INDICES]);
+const toggleCustomModel = (idx: number) => {
+  customModelIndices.value = customModelIndices.value.includes(idx)
+    ? customModelIndices.value.filter((m) => m !== idx)
+    : [...customModelIndices.value, idx];
+};
 
 const activeEnsemble = computed(() =>
-  [
-    ...(customEnsemble.value
-      ? customModelIndices.value
-      : HIGH_PERFORMING_MODEL_INDICES),
-  ].sort((a, b) => a - b),
+  [...customModelIndices.value].sort((a, b) => a - b),
 );
-// Compared instead of the array itself, so re-ticking back to the same set
+// True only while the selection still matches the hand-picked default, so
+// the heading can call it out by name instead of just a count.
+const isDefaultEnsemble = computed(
+  () => activeEnsembleKey.value === DEFAULT_ENSEMBLE_KEY,
+);
+// Compared instead of the array itself, so re-selecting back to the same set
 // does not refetch identical images.
 const activeEnsembleKey = computed(() => activeEnsemble.value.join(","));
 
@@ -998,7 +1016,7 @@ const createWMSLayer = (
 // Range across an arbitrary set of models, computed by the server. The stored
 // *_range WMS styles hardcode model(0:29), so a subset has to go through WCPS.
 const ensembleRangeUrl = (variable: string, models: number[]) => {
-  const { latMin, latMax, lonMin, lonMax } = COVERAGE_BOUNDS;
+  const { latMin, latMax, lonMin, lonMax } = QUERY_BOUNDS;
   const selected = models.map((m) => `$m=${m}`).join(" or ");
   const slice =
     `scenario(${spreadScenario.value}),position(${spreadPosition.value}),` +
@@ -1046,8 +1064,8 @@ const createEnsembleRangeLayer = (
     L.imageOverlay(
       ensembleRangeUrl(variable, models),
       [
-        [COVERAGE_BOUNDS.latMin, COVERAGE_BOUNDS.lonMin],
-        [COVERAGE_BOUNDS.latMax, COVERAGE_BOUNDS.lonMax],
+        [QUERY_BOUNDS.latMin, QUERY_BOUNDS.lonMin],
+        [QUERY_BOUNDS.latMax, QUERY_BOUNDS.lonMax],
       ],
       { opacity: 0.85 },
     ),
@@ -1094,9 +1112,7 @@ const renderSpreadChart = () => {
   const click = spreadClick.value;
   if (!click || !Plotly || !spreadChartContainer.value) return;
 
-  const ensembleLabel = customEnsemble.value
-    ? `Custom ensemble (${activeEnsemble.value.length})`
-    : `High-performing (${activeEnsemble.value.length})`;
+  const ensembleLabel = `Custom ensemble (${activeEnsemble.value.length})`;
 
   const traces = [
     spreadBoxTrace("All 30 models", ALL_MODEL_INDICES, SPREAD_GROUP_COLORS.all),
@@ -1186,7 +1202,13 @@ const handleSpreadMapClick = async (event: any) => {
 
   spreadMarkers.forEach((marker, map) => map.removeLayer(marker));
   spreadMarkers.clear();
-  spreadMarkers.set(event.target, L.marker([lat, lng]).addTo(event.target));
+  // Indices 0/2 and 1/3 chart the same variable (all-30 vs ensemble row), so
+  // marking both keeps the two maps in sync at the same point.
+  const pairedIndex = index < 2 ? index + 2 : index - 2;
+  [index, pairedIndex].forEach((idx) => {
+    const map = spreadMaps[idx];
+    if (map) spreadMarkers.set(map, L.marker([lat, lng]).addTo(map));
+  });
 
   // Left column charts mm/day, right column percent
   spreadClick.value = {
@@ -1221,7 +1243,7 @@ const updateSpreadLayers = (indices: number[] = ALL_SPREAD_MAP_INDICES) => {
     const spec = SPREAD_MAP_SPECS[idx]!;
     const models = spec.models();
     // A range needs something to range over, and an empty `where` clause is
-    // not a valid query. Leave the map bare and let the picker explain why.
+    // not a valid query.
     if (!models.length) {
       spreadLayers[idx] = null;
       spreadLoading.value[idx] = false;
@@ -1249,7 +1271,8 @@ const updateLayers = () => {
   // Cover the maps up front: the new tiles are requested below, and the layers
   // only clear their own flag once every tile has come back.
   mapsLoading.value = [true, true, true];
-  // First map always shows mean for model 21, scenario 3, season 1, position 1
+  // First map always shows the mean_range style (spread across all models),
+  // fixed to SSP3-7.0, Dry season, Late-Century, regardless of the controls.
   wmsLayers = [
     createWMSLayer("mean_range", false, 0, {
       scenario: "3",
@@ -1477,14 +1500,10 @@ onMounted(async () => {
 
     const mapOptionsBase = {
       crs: L.CRS.EPSG3857,
-      center: [20.25, -156.55],
-      zoomSnap: 0.1,
+      zoomSnap: 0.01,
       zoomControl: false,
       dragging: false,
       scrollWheelZoom: false,
-      doubleClickZoom: false,
-      touchZoom: false,
-      boxZoom: false,
     };
 
     const baseTileOptions = {
@@ -1499,24 +1518,25 @@ onMounted(async () => {
 
     mapContainers.forEach((container, idx) => {
       if (container.value) {
-        // Overview map (idx 0) gets higher zoom level and centered more west
+        // Overview map (idx 0) is pannable/zoomable, but only via the zoom control buttons
         const mapOptions =
           idx === 0
             ? {
-                // Overview map is pannable/zoomable with the default mouse behavior
                 ...mapOptionsBase,
-                zoom: 8,
-                center: [20.5, -157.5],
-                zoomControl: true,
+                // Each zoom control click jumps 1 level, even though
+                // zoomSnap stays fine-grained for fitBounds.
+                zoomDelta: 1,
+                // Added manually below so it can sit at the top-right
+                zoomControl: false,
                 dragging: true,
-                scrollWheelZoom: true,
-                doubleClickZoom: true,
-                touchZoom: true,
-                boxZoom: true,
+                scrollWheelZoom: false,
               }
-            : { ...mapOptionsBase, zoom: 7 };
+            : mapOptionsBase;
         const map = L.map(container.value, mapOptions);
         L.tileLayer(USGS_BASEMAP_URL, baseTileOptions).addTo(map);
+        if (idx === 0) {
+          L.control.zoom({ position: "topright" }).addTo(map);
+        }
         // Only add land mask to interactive maps (not overview map)
         if (idx !== 0) {
           addLandMask(map);
@@ -1527,24 +1547,25 @@ onMounted(async () => {
     });
     [map0, map1, map2] = maps;
 
-    // Explore Model Spread maps: same non-interactive treatment, but sized to
-    // fit the coverage in a two-column row.
+    // Explore Model Spread maps: same non-interactive treatment as the model
+    // output maps.
     spreadMaps = spreadContainers.map((container) => {
       if (!container) return null;
-      const map = L.map(container, {
-        ...mapOptionsBase,
-        zoom: 7.2,
-        center: [20.5, -157.2],
-      });
+      const map = L.map(container, mapOptionsBase);
       L.tileLayer(USGS_BASEMAP_URL, baseTileOptions).addTo(map);
       addLandMask(map);
       map.on("click", handleSpreadMapClick);
       return map;
     });
 
-    // Initialize layers after maps are ready
+    // Initialize layers after maps are ready. Fit every map to the same
+    // bounding box so they all show the same extent, centered on the same
+    // spot, regardless of each map's on-screen size.
     setTimeout(() => {
-      [...maps, ...spreadMaps].forEach((map) => map?.invalidateSize());
+      [...maps, ...spreadMaps].forEach((map) => {
+        map?.invalidateSize();
+        map?.fitBounds(BBOX);
+      });
       updateLayers();
       updateSpreadLayers();
     }, 100);
@@ -1610,27 +1631,6 @@ onMounted(async () => {
   padding: 0 20px;
 }
 
-.ensemble-toggle {
-  display: flex;
-  justify-content: center;
-  font-weight: bold;
-}
-
-.model-picker {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 6px 20px;
-  margin-top: 1rem;
-  padding: 1rem 1.25rem;
-  border: 1px solid #dbdbdb;
-  border-radius: 4px;
-  background-color: #fafafa;
-}
-
-.model-picker-item input {
-  margin-right: 6px;
-}
-
 .ensemble-empty {
   margin-top: 0.75rem;
   text-align: center;
@@ -1658,6 +1658,13 @@ onMounted(async () => {
   color: #999;
   font-size: 0.8em;
   line-height: 1.6;
+  cursor: pointer;
+  font-family: inherit;
+  transition: none;
+}
+
+.ensemble-model:hover {
+  border-color: #2c3e50;
 }
 
 .ensemble-model.is-included {
@@ -1693,10 +1700,21 @@ onMounted(async () => {
 }
 
 .spread-chart-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
   padding: 20px;
   text-align: center;
   font-size: 1.1em;
   color: #555;
+}
+
+.chart-hint-icon {
+  width: 20px;
+  height: 32px;
+  position: relative;
+  top: -2px;
 }
 
 .spread-chart {
@@ -1728,9 +1746,8 @@ onMounted(async () => {
 }
 
 .overview-map {
-  width: 85vw;
-  margin: 1.5rem auto;
-  aspect-ratio: 3 / 2;
+  margin: 1.5rem 5rem;
+  aspect-ratio: 1.35;
   background-color: #e0e0e0;
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -1762,11 +1779,17 @@ onMounted(async () => {
 }
 
 .map {
-  aspect-ratio: 400 / 350;
   background-color: #e0e0e0;
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   position: relative;
+  aspect-ratio: 1.35;
+}
+
+/* Closer to the shape of the coverage than the Model outputs maps, so the
+   islands fill more of a two-per-row layout. */
+.spread-map {
+  aspect-ratio: 1.35;
 }
 
 /* Closer to the shape of the coverage than the Model outputs maps, so the
@@ -1818,6 +1841,17 @@ onMounted(async () => {
   text-align: center;
   font-family: Arial, sans-serif;
   color: #2c3e50;
+}
+
+.chart-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+  text-align: center;
+  font-size: 1.1em;
+  color: #555;
 }
 
 #plotly-chart {
