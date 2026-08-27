@@ -31,8 +31,6 @@ Everything else is npm: Nuxt, Vue, Leaflet, Plotly, Bulma.
 - Cancel superseded image requests.
 - Size the WCPS render grid to the map rather than a fixed 1152x768.
 - De-duplicate the legend markup; rows that share a scale could share a legend.
-- Remove `aggregateView` and the aggregate chart branch, or restore a control
-  that reaches them.
 - Surface how many models are behind each box in the spread chart. Some
   model/scenario combinations have no data at a given point, so a box can hold
   fewer points than its group size implies.

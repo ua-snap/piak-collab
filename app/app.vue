@@ -286,7 +286,6 @@
                 id="model"
                 v-model="selectedModel"
                 @change="updateLayers"
-                :disabled="aggregateView"
               >
                 <option value="0">ACCESS-CM2</option>
                 <option value="1">ACCESS-ESM1-5</option>
@@ -374,13 +373,10 @@
     </div>
     <div class="maps-wrapper">
       <div class="map-panel">
-        <h3 v-if="!aggregateView">Delta From Historical (&Delta; mm/day)</h3>
-        <h3 v-else>
-          Delta From Historical, Model Spread (&Delta;<sup>2</sup> mm/day)
-        </h3>
+        <h3>Delta From Historical (&Delta; mm/day)</h3>
         <div class="map" ref="mapContainer1">
           <MapLoadingOverlay :loading="mapsLoading[1]" />
-          <div class="legend" v-if="!aggregateView">
+          <div class="legend">
             <div class="legend-item">
               <div
                 class="legend-swatch"
@@ -417,51 +413,13 @@
               <span class="legend-value">&ge; 1.5</span>
             </div>
           </div>
-          <div class="legend" v-else>
-            <div class="legend-item">
-              <div
-                class="legend-swatch"
-                style="background-color: rgba(247, 247, 247, 1)"
-              ></div>
-              <span class="legend-value">&ge; 0, &lt; 1</span>
-            </div>
-            <div class="legend-item">
-              <div
-                class="legend-swatch"
-                style="background-color: rgba(204, 204, 204, 1)"
-              ></div>
-              <span class="legend-value">&ge; 1, &lt; 2</span>
-            </div>
-            <div class="legend-item">
-              <div
-                class="legend-swatch"
-                style="background-color: rgba(150, 150, 150, 1)"
-              ></div>
-              <span class="legend-value">&ge; 2, &lt; 3</span>
-            </div>
-            <div class="legend-item">
-              <div
-                class="legend-swatch"
-                style="background-color: rgba(99, 99, 99, 1)"
-              ></div>
-              <span class="legend-value">&ge; 3, &lt; 4</span>
-            </div>
-            <div class="legend-item">
-              <div
-                class="legend-swatch"
-                style="background-color: rgba(37, 37, 37, 1)"
-              ></div>
-              <span class="legend-value">&ge; 4</span>
-            </div>
-          </div>
         </div>
       </div>
       <div class="map-panel">
-        <h3 v-if="!aggregateView">Delta From Historical (%)</h3>
-        <h3 v-else>Delta From Historical, Model Spread (&Delta;%)</h3>
+        <h3>Delta From Historical (%)</h3>
         <div class="map" ref="mapContainer2">
           <MapLoadingOverlay :loading="mapsLoading[2]" />
-          <div class="legend" v-if="!aggregateView">
+          <div class="legend">
             <div class="legend-item">
               <div
                 class="legend-swatch"
@@ -496,43 +454,6 @@
                 style="background-color: rgba(0, 109, 44, 1)"
               ></div>
               <span class="legend-value">&ge; 30</span>
-            </div>
-          </div>
-          <div class="legend" v-else>
-            <div class="legend-item">
-              <div
-                class="legend-swatch"
-                style="background-color: rgba(247, 247, 247, 1)"
-              ></div>
-              <span class="legend-value">&ge; 0, &lt; 15</span>
-            </div>
-            <div class="legend-item">
-              <div
-                class="legend-swatch"
-                style="background-color: rgba(204, 204, 204, 1)"
-              ></div>
-              <span class="legend-value">&ge; 15, &lt; 30</span>
-            </div>
-            <div class="legend-item">
-              <div
-                class="legend-swatch"
-                style="background-color: rgba(150, 150, 150, 1)"
-              ></div>
-              <span class="legend-value">&ge; 30, &lt; 45</span>
-            </div>
-            <div class="legend-item">
-              <div
-                class="legend-swatch"
-                style="background-color: rgba(99, 99, 99, 1)"
-              ></div>
-              <span class="legend-value">&ge; 45, &lt; 60</span>
-            </div>
-            <div class="legend-item">
-              <div
-                class="legend-swatch"
-                style="background-color: rgba(37, 37, 37, 1)"
-              ></div>
-              <span class="legend-value">&ge; 60</span>
             </div>
           </div>
         </div>
@@ -658,13 +579,7 @@ const RANGE_COLOR_TABLES: Record<string, Record<string, number[]>> = {
   },
 };
 
-const VARIABLE_NAMES_SINGLE: Record<string, string> = {
-  mean: "Mean Precipitation",
-  delta_abs: "Absolute Change from Historical Precipitation",
-  delta_pct: "Percent Change from Historical Precipitation",
-};
-
-const VARIABLE_NAMES_AGGREGATE: Record<string, string> = {
+const VARIABLE_NAMES: Record<string, string> = {
   mean: "Mean Precipitation",
   delta_abs: "Absolute Change from Historical Precipitation",
   delta_pct: "Percent Change from Historical Precipitation",
@@ -772,7 +687,6 @@ const selectedModel = ref("0");
 const selectedScenario = ref("3");
 const selectedPosition = ref("1");
 const selectedSeason = ref("0");
-const aggregateView = ref(false);
 const isLoading = ref(false);
 // One flag per map, true while that map has WMS requests in flight
 const mapsLoading = ref([true, true, true]);
@@ -828,21 +742,6 @@ const lastClickedLat = ref<number | null>(null);
 const lastClickedLng = ref<number | null>(null);
 const lastClickedVariable = ref<string | null>(null);
 
-// Watch aggregateView and update layers when it changes
-watch(aggregateView, () => {
-  // Clear all markers when view changes
-  markers.forEach((marker, map) => map.removeLayer(marker));
-  markers.clear();
-  // Clear the chart
-  if (chartContainer.value && Plotly) {
-    Plotly.purge(chartContainer.value);
-  }
-  // Clear stored location
-  lastClickedLat.value = null;
-  lastClickedLng.value = null;
-  lastClickedVariable.value = null;
-  updateLayers();
-});
 
 // Every spread control funnels through here, so working through the model
 // checklist or flipping between scenarios collapses into one round of
@@ -969,7 +868,6 @@ const isOnLand = (lat: number, lng: number) => {
 // Helper to create WMS layer
 const createWMSLayer = (
   style: string,
-  isAggregate: boolean,
   index: number,
   overrides?: {
     model?: string;
@@ -988,15 +886,13 @@ const createWMSLayer = (
     // requests the 4326 bbox of each Mercator tile.
     crs: L.CRS.EPSG4326,
     opacity: 0.85,
-    styles: isAggregate ? `${style}_range` : style,
+    styles: style,
     dim_scenario: overrides?.scenario ?? selectedScenario.value,
     dim_position: overrides?.position ?? selectedPosition.value,
     dim_season: overrides?.season ?? selectedSeason.value,
   };
 
-  if (!isAggregate) {
-    options.dim_model = overrides?.model ?? selectedModel.value;
-  }
+  options.dim_model = overrides?.model ?? selectedModel.value;
 
   const layer = L.tileLayer.wms(RASDAMAN_BASE_URL, options);
 
@@ -1133,7 +1029,7 @@ const renderSpreadChart = () => {
   );
 
   const titleText =
-    `${VARIABLE_NAMES_AGGREGATE[click.variable]} ` +
+    `${VARIABLE_NAMES[click.variable]} ` +
     `(${click.lat.toFixed(2)}°, ${click.lng.toFixed(2)}°)<br />` +
     `Horizon: ${HORIZON_NAMES[spreadPosition.value]}, ` +
     `Season: ${SEASON_NAMES[spreadSeason.value]}`;
@@ -1267,20 +1163,19 @@ const updateLayers = () => {
     if (layer) maps[idx].removeLayer(layer);
   });
 
-  const isAggregate = aggregateView.value;
   // Cover the maps up front: the new tiles are requested below, and the layers
   // only clear their own flag once every tile has come back.
   mapsLoading.value = [true, true, true];
   // First map always shows the mean_range style (spread across all models),
   // fixed to SSP3-7.0, Dry season, Late-Century, regardless of the controls.
   wmsLayers = [
-    createWMSLayer("mean_range", false, 0, {
+    createWMSLayer("mean_range", 0, {
       scenario: "3",
       season: "1",
       position: "2",
     }),
     ...["delta_abs", "delta_pct"].map((style, idx) =>
-      createWMSLayer(style, isAggregate, idx + 1),
+      createWMSLayer(style, idx + 1),
     ),
   ];
   wmsLayers.forEach((layer, idx) => layer.addTo(maps[idx]));
@@ -1330,147 +1225,70 @@ const fetchDataAndCreateChart = async (
     displaylogo: false,
   };
 
-  if (aggregateView.value) {
-    // Aggregate view: fetch data for all 30 models across all scenarios
-    let scenarioNames = ["Historical", ...SCENARIO_NAMES];
+  const model = selectedModel.value;
 
-    // Fetch historical and projected data
-    const historicalUrl = `${WCS_BASE_URL}&SUBSET=Lon(${lng})&SUBSET=Lat(${lat})&SUBSET=scenario(0)&SUBSET=position(0)&SUBSET=season(${season})&RANGESUBSET=${wcsVariable}&FORMAT=application/json`;
-    const projectedUrl = `${WCS_BASE_URL}&SUBSET=Lon(${lng})&SUBSET=Lat(${lat})&SUBSET=position(${position})&SUBSET=season(${season})&RANGESUBSET=${wcsVariable}&FORMAT=application/json`;
+  const historicalUrl = `${WCS_BASE_URL}&SUBSET=Lon(${lng})&SUBSET=Lat(${lat})&SUBSET=model(${model})&SUBSET=scenario(0)&SUBSET=position(0)&SUBSET=season(${season})&RANGESUBSET=${wcsVariable}&FORMAT=application/json`;
+  const projectedUrl = `${WCS_BASE_URL}&SUBSET=Lon(${lng})&SUBSET=Lat(${lat})&SUBSET=model(${model})&SUBSET=position(${position})&SUBSET=season(${season})&RANGESUBSET=${wcsVariable}&FORMAT=application/json`;
 
-    const [historicalJson, projectedJson] = await Promise.all([
-      fetch(historicalUrl).then((r) => r.json()),
-      fetch(projectedUrl).then((r) => r.json()),
-    ]);
+  const [historicalMean, projectedMeans] = await Promise.all([
+    fetch(historicalUrl).then((r) => r.json()),
+    fetch(projectedUrl).then((r) => r.json()),
+  ]);
 
-    // Transpose projected data: group by scenario
-    const scenarioData: any[][] = [];
-    projectedJson.forEach((modelData: any) => {
-      modelData.forEach((scenarioValue: any, idx: number) => {
-        if (!scenarioData[idx]) scenarioData[idx] = [];
-        scenarioData[idx].push(scenarioValue);
-      });
-    });
+  projectedMeans.shift();
 
-    // Build traces
-    const traces: any[] = [];
-    let xTickLabels = scenarioNames;
+  const xLabels =
+    wcsVariable === "mean"
+      ? ["Historical", ...SCENARIO_NAMES]
+      : SCENARIO_NAMES;
+  const yValues =
+    wcsVariable === "mean"
+      ? [historicalMean, ...projectedMeans]
+      : projectedMeans;
+  const selectedScenarioIdx = parseInt(selectedScenario.value) - 1;
 
-    if (wcsVariable === "mean") {
-      scenarioData[0] = historicalJson;
-    } else {
-      scenarioData.shift();
-      xTickLabels.shift();
-    }
+  const scenarioColors = SCENARIO_NAMES.map((_, idx) =>
+    idx === selectedScenarioIdx ? "#8c3ac9" : "#a892cc",
+  );
+  const colors =
+    wcsVariable === "mean" ? ["#333333", ...scenarioColors] : scenarioColors;
 
-    const scenarioInt = parseInt(selectedScenario.value);
-    const selectedScenarioIdx =
-      wcsVariable === "mean" ? scenarioInt : scenarioInt - 1;
+  const tickLabels = xLabels.map((label, idx) => {
+    const scenarioIdx = wcsVariable === "mean" ? idx - 1 : idx;
+    return scenarioIdx === selectedScenarioIdx ? `<b>${label}</b>` : label;
+  });
 
-    xTickLabels.forEach((name, idx) => {
-      const color =
-        wcsVariable === "mean" && idx === 0
-          ? "#333333"
-          : idx === selectedScenarioIdx
-            ? "#8c3ac9"
-            : "#a892cc";
-      traces.push({
-        y: scenarioData[idx] || [],
-        name,
-        type: "box",
-        marker: { color },
-      });
-    });
+  const symbols =
+    wcsVariable === "mean"
+      ? ["diamond", "circle", "circle", "circle", "circle"]
+      : ["circle", "circle", "circle", "circle"];
 
-    const tickLabels = xTickLabels.map((label, idx) =>
-      idx === selectedScenarioIdx ? `<b>${label}</b>` : label,
-    );
+  const trace = {
+    x: xLabels,
+    y: yValues,
+    mode: "markers",
+    type: "scatter",
+    marker: { color: colors, size: 10, symbol: symbols },
+  };
 
-    const titleText = `${VARIABLE_NAMES_AGGREGATE[wcsVariable]} (${lat.toFixed(2)}°, ${lng.toFixed(2)}°)<br />Horizon: ${HORIZON_NAMES[position]}, Season: ${SEASON_NAMES[season]}`;
+  const modelName = MODEL_NAMES[parseInt(selectedModel.value)];
+  const titleText = `${VARIABLE_NAMES[wcsVariable]} (${lat.toFixed(2)}°, ${lng.toFixed(2)}°)<br />Model: ${modelName}, Horizon: ${HORIZON_NAMES[position]}, Season: ${SEASON_NAMES[season]}`;
 
-    const layout = {
-      title: { text: titleText, font: { size: 16 } },
-      xaxis: {
-        title: "Scenario",
-        tickvals: xTickLabels.map((_, i) => i),
-        ticktext: tickLabels,
-      },
-      yaxis: { title: { text: Y_AXIS_TITLES[wcsVariable] } },
-      margin: { t: 100, b: 80, l: 80, r: 30 },
-      hovermode: false,
-      showlegend: false,
-    };
+  const layout = {
+    title: { text: titleText, font: { size: 16 } },
+    xaxis: {
+      tickvals: xLabels.map((_, i) => i),
+      ticktext: tickLabels,
+      automargin: true,
+    },
+    yaxis: { title: { text: Y_AXIS_TITLES[wcsVariable] }, automargin: true },
+    margin: { t: 100, b: 80, l: 80, r: 30 },
+    showlegend: false,
+  };
 
-    if (chartContainer.value) {
-      Plotly.newPlot(chartContainer.value, traces, layout, chartConfig);
-    }
-  } else {
-    // Single model view
-    const model = selectedModel.value;
-
-    const historicalUrl = `${WCS_BASE_URL}&SUBSET=Lon(${lng})&SUBSET=Lat(${lat})&SUBSET=model(${model})&SUBSET=scenario(0)&SUBSET=position(0)&SUBSET=season(${season})&RANGESUBSET=${wcsVariable}&FORMAT=application/json`;
-    const projectedUrl = `${WCS_BASE_URL}&SUBSET=Lon(${lng})&SUBSET=Lat(${lat})&SUBSET=model(${model})&SUBSET=position(${position})&SUBSET=season(${season})&RANGESUBSET=${wcsVariable}&FORMAT=application/json`;
-
-    const [historicalMean, projectedMeans] = await Promise.all([
-      fetch(historicalUrl).then((r) => r.json()),
-      fetch(projectedUrl).then((r) => r.json()),
-    ]);
-
-    projectedMeans.shift();
-
-    const xLabels =
-      wcsVariable === "mean"
-        ? ["Historical", ...SCENARIO_NAMES]
-        : SCENARIO_NAMES;
-    const yValues =
-      wcsVariable === "mean"
-        ? [historicalMean, ...projectedMeans]
-        : projectedMeans;
-    const selectedScenarioIdx = parseInt(selectedScenario.value) - 1;
-
-    const scenarioColors = SCENARIO_NAMES.map((_, idx) =>
-      idx === selectedScenarioIdx ? "#8c3ac9" : "#a892cc",
-    );
-    const colors =
-      wcsVariable === "mean" ? ["#333333", ...scenarioColors] : scenarioColors;
-
-    const tickLabels = xLabels.map((label, idx) => {
-      const scenarioIdx = wcsVariable === "mean" ? idx - 1 : idx;
-      return scenarioIdx === selectedScenarioIdx ? `<b>${label}</b>` : label;
-    });
-
-    const symbols =
-      wcsVariable === "mean"
-        ? ["diamond", "circle", "circle", "circle", "circle"]
-        : ["circle", "circle", "circle", "circle"];
-
-    const trace = {
-      x: xLabels,
-      y: yValues,
-      mode: "markers",
-      type: "scatter",
-      marker: { color: colors, size: 10, symbol: symbols },
-    };
-
-    const modelName = MODEL_NAMES[parseInt(selectedModel.value)];
-    const titleText = `${VARIABLE_NAMES_SINGLE[wcsVariable]} (${lat.toFixed(2)}°, ${lng.toFixed(2)}°)<br />Model: ${modelName}, Horizon: ${HORIZON_NAMES[position]}, Season: ${SEASON_NAMES[season]}`;
-
-    const layout = {
-      title: { text: titleText, font: { size: 16 } },
-      xaxis: {
-        tickvals: xLabels.map((_, i) => i),
-        ticktext: tickLabels,
-        automargin: true,
-      },
-      yaxis: { title: { text: Y_AXIS_TITLES[wcsVariable] }, automargin: true },
-      margin: { t: 100, b: 80, l: 80, r: 30 },
-      showlegend: false,
-    };
-
-    if (chartContainer.value) {
-      Plotly.newPlot(chartContainer.value, [trace], layout, chartConfig);
-      setTimeout(() => window.dispatchEvent(new Event("resize")), 0);
-    }
+  if (chartContainer.value) {
+    Plotly.newPlot(chartContainer.value, [trace], layout, chartConfig);
+    setTimeout(() => window.dispatchEvent(new Event("resize")), 0);
   }
   isLoading.value = false;
 };
