@@ -976,6 +976,8 @@ const handleSpreadMapClick = async (event: any) => {
   const index = spreadMaps.indexOf(event.target);
   if (index === -1) return;
 
+  Plotly.purge(spreadChartContainer.value);
+
   spreadMarkers.forEach((marker, map) => map.removeLayer(marker));
   spreadMarkers.clear();
   // Indices 0/2 and 1/3 chart the same variable (all-30 vs ensemble row), so
